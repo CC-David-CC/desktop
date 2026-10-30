@@ -55,6 +55,16 @@ function setScreenKeyboardEnabled(enabled){
 
 
 function sessionName() { return currentSession?.public.kind==='registered'?currentSession.displayName:'Anon'; }
+function refreshDesktopClocks(){
+  const now=new Date(),date=now.toLocaleDateString('en-CA'),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+  for(const clock of document.querySelectorAll('.panel .clock')){clock.firstChild.nodeValue=date;clock.lastChild.nodeValue=time;}
+  for(const line of document.querySelectorAll('.status-popup[data-status-type="clock"] .status-line'))line.textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+}
+let desktopClockTimer;
+function scheduleDesktopClock(){clearTimeout(desktopClockTimer);refreshDesktopClocks();desktopClockTimer=setTimeout(scheduleDesktopClock,60000-Date.now()%60000+50);}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleDesktopClock();});
+window.addEventListener('focus',scheduleDesktopClock);
+scheduleDesktopClock();
 const accountAppCatalogs=new Map();
 const accountAppTemplates=[
   {slot:'canvas',name:'Blank canvas',icon:'prototype-canvas',heading:'YOUR APP HERE',description:'A blank space for your next idea.'},
