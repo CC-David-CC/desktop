@@ -117,6 +117,7 @@ const desktopMenu=[
   {name:'PDF Viewer',icon:'pdf-viewer'},
   {name:'Image Editor',icon:'image-editor'},
   {name:'Calculator',icon:'calculator'},
+  {name:'System Tools',icon:'help',children:[{name:'FFmpeg',icon:'help',disabled:true}]},
   {separator:true}, {name:'Help',icon:'help'},
   {name:'End session',icon:reference.icons.applications}
 ];
@@ -268,8 +269,8 @@ class Desktop {
     if(this.mobile&&depth>0){const back=textButton('‹ Back',()=>this.showMenu(this.menuLevels[depth-1],depth-1,8,this.config.panelHeight),'menu-row');pane.append(back);}
     for(const entry of items) {
       if(entry.separator){pane.append(make('div','menu-separator'));continue;}
-      const row=button(entry.name,null,'menu-row');row.setAttribute('role','menuitem');
-      row.append(icon(entry.icon,true),make('span','row-text',entry.name));
+      const row=button(entry.name,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title='Background tool available to applications';}
+      row.append(icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',entry.name));
       const open=()=>{
         pane.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));row.classList.add('selected');
         if(entry.children){

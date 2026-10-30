@@ -1,6 +1,6 @@
 'use strict';
 let publicAppLoader;
-function publicAppHost(desktop,w){return {version:2,desktop,w,ui:{make,textButton,appInput,feedback},session:()=>currentSession,guestState:()=>guestState,guestMessage:()=>guestMessage,storage:{mirrorFileContext,openMirrorEditor,openMirrorDocument,signedInSubject},terminal:{terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
+function publicAppHost(desktop,w){return {version:2,desktop,w,ui:{make,textButton,appInput,feedback},session:()=>currentSession,guestState:()=>guestState,guestMessage:()=>guestMessage,storage:{mirrorFileContext,openMirrorEditor,openMirrorDocument,signedInSubject},tools:{createFFmpeg:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('ffmpeg')).createFFmpeg();}},terminal:{terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
 function publicAppContent(id,desktop,w){
   const placeholder=make('div','window-content app-loading','Loading '+w.title+'…');placeholder.dataset.appLoading=id;
   const load=async()=>{
