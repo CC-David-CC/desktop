@@ -604,7 +604,9 @@ async function initializeSession(){
   if(identityConfig.desktopLifecycle){
     bootRecovery?.stop();bootRecovery=null;
     const {startLifecycle}=await import('./assets/desktop/lifecycle.mjs');
-    desktopLifecycle=startLifecycle({config:identityConfig,roots:()=>[document.querySelector('#previews'),document.querySelector('#voice-control')],getGuestLink:()=>!guestNetworkAdapter||guestNetworkAdapter.socket?.readyState===WebSocket.OPEN,recoverSession:recoverDesktopSession});
+    // Guest Internet can reconnect independently; it must not lock the desktop
+    // when the account and file services are still available.
+    desktopLifecycle=startLifecycle({config:identityConfig,roots:()=>[document.querySelector('#previews'),document.querySelector('#voice-control')],recoverSession:recoverDesktopSession});
   }
 }
 function sessionViews(session){
