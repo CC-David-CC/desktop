@@ -76,36 +76,10 @@ function accountApplications(){
 const isAccountApp=app=>typeof app==='string'&&app.startsWith('user-app:');
 const accountApp=app=>accountApplications().find(entry=>entry.id===app);
 const availableApplication=app=>!isAccountApp(app)||!!accountApp(app);
-const accountWindow=w=>(!w.ownerSub||w.ownerSub===signedInSubject())&&(!w.browserOwner||w.browserOwner===browserFilesScope())&&(!isAccountApp(w.app)||!!accountApp(w.app));
-function accountAppContent(w){
-  const entry=accountApp(w.app);
-  if(!entry||entry.ownerSub!==w.ownerSub)throw Error('Sign in to the app owner’s account.');
-  const body=make('div','window-content prototype-app');body.dataset.accountApp=entry.slot;
-  const badge=make('span','prototype-badge',entry.ownerName+"’s app");
-  body.append(badge,make('h2','',entry.heading),make('p','prototype-description',entry.description));
-  if(entry.slot==='dashboard'){
-    const cards=make('div','prototype-cards');
-    for(const title of ['Projects','Activity','Ideas']){const card=make('div','prototype-card');card.append(make('span','',title),make('strong','','—'));cards.append(card);}body.append(cards);
-  }
-  const label=make('label','prototype-field',entry.slot==='notes'?'Your notes':entry.slot==='dashboard'?'Project notes':'Your canvas');
-  const draft=make('textarea','prototype-draft');draft.value=w.accountDraft||'';draft.placeholder=entry.slot==='canvas'?'Make this space yours…':'Start writing…';draft.maxLength=16384;draft.setAttribute('aria-label',entry.name+' draft');draft.addEventListener('input',()=>{w.accountDraft=draft.value;});label.append(draft);body.append(label);
-  body.append(make('p','prototype-footnote','Template preview · changes stay in this tab for now.'));return body;
-}
+const accountWindow=w=>(!w.ownerSub||w.ownerSub===signedInSubject())&&(!isAccountApp(w.app)||!!accountApp(w.app));
 function feedback(text) {
   clearTimeout(feedbackTimer);const status=$('#feedback');status.textContent=text;
   if(text)feedbackTimer=setTimeout(()=>{status.textContent='';feedbackTimer=null;},4000);
-}
-function clearSystemAnnouncement(){document.querySelector('#system-announcement')?.remove();}
-function showSystemAnnouncement(text,acknowledge){
-  let box=document.querySelector('#system-announcement');
-  if(!box){
-    box=document.createElement('aside');box.id='system-announcement';box.setAttribute('role','status');
-    const title=document.createElement('strong');title.textContent='SYSTEM';const message=document.createElement('p');message.dataset.systemMessage='';
-    const hint=document.createElement('p');hint.textContent='Open Chat → SYSTEM to see announcements.';
-    const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent='Dismiss';box.append(title,message,hint,dismiss);document.body.append(box);
-  }
-  box.querySelector('[data-system-message]').textContent=text;
-  box.querySelector('button').onclick=()=>{acknowledge();clearSystemAnnouncement();};
 }
 function icon(key, direct = false) {
   if(isAccountApp(key))key='prototype-'+key.split(':').at(-1);
@@ -115,9 +89,6 @@ function icon(key, direct = false) {
     'prototype-dashboard':'<rect x="2" y="3" width="20" height="18" rx="2" fill="#e8ddf5"/><path d="M2 8h20M10 8v13M10 14h12"/>',
     text:'<path fill="#fff" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 11h9M8 15h9M8 19h6"/>',
     calculator:'<rect x="4" y="2" width="16" height="20" rx="2" fill="#d8dee2"/><path fill="#b8dcdf" d="M7 5h10v5H7z"/><path d="M7 13h2m2 0h2m2 0h2M7 16h2m2 0h2m2 0h2M7 19h2m2 0h2m2 0h2"/>',
-    chat:'<path fill="#d6e9d5" d="M3 3h18v13H10l-6 5v-5H3z"/><path d="M7 7h10M7 11h7"/>',
-    chess:'<rect x="3" y="3" width="18" height="18" rx="2" fill="#f3e9d6"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><path fill="#54706a" stroke="none" d="M3 3h6v6H3zm12 0h6v6h-6zM9 9h6v6H9zM3 15h6v6H3zm12 0h6v6h-6z"/>',
-    rooms:'<path fill="#d9e9f4" d="M2 2h17v13H9l-5 5v-5H2z"/><path fill="#f8f3de" d="M11 10h11v12H11z"/><path d="M14 10v12m4-12v12m-7-8h11m-11 4h11"/>',
     help:'<circle cx="12" cy="12" r="10" fill="#d4e8fb"/><path d="M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4m0 3v1"/>'
   };
   if(drawings[key]){
@@ -137,8 +108,6 @@ const desktopMenu=[
   {name:'Files',icon:reference.icons.files},
   {name:'Text Editor',icon:'text'},
   {name:'Calculator',icon:'calculator'},
-  {name:'Chat',icon:'chat'},
-  {name:'Chess',icon:'chess'},
   {separator:true}, {name:'Help',icon:'help'},
   {name:'End session',icon:reference.icons.applications}
 ];
@@ -317,7 +286,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Calculator':'calculator','Chat':'chat','Chess':'chess','Rooms':'rooms','Help':'help'}[name];
+    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -327,28 +296,27 @@ class Desktop {
     w.minimized=false;this.current=w.workspace;this.active=w.id;this.workspaceFocus.set(w.workspace,w.id);this.closePopups();this.render();
   }
   open(app,context){
-    if(app!=='text'||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||!['guest','server','browser'].includes(context.storage)||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
-    if(context.storage==='server'&&(!signedInSubject()||context.owner!==signedInSubject()))throw Error('Sign in to open this private document');
-    if(context.storage==='browser'&&context.owner!==browserFilesScope())throw Error('Switch back to the browser document owner');
+    if(app!=='text'||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||!['mirror'].includes(context.storage)||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
+    if(context.storage==='mirror'&&(!signedInSubject()||context.owner!==signedInSubject()))throw Error('Sign in to open this private document');
     const launchContext=Object.freeze({version:1,storage:context.storage,path:context.path,owner:context.owner});
     const found=this.windows.find(w=>w.app==='text'&&(w.editor?((w.editor.storage||'guest')===context.storage&&w.editor.path===context.path&&(context.storage==='guest'?!w.ownerSub&&!w.browserOwner:context.storage==='browser'?w.browserOwner===context.owner:w.ownerSub===context.owner)):(w.launchContext?.storage===context.storage&&w.launchContext.path===context.path&&w.launchContext.owner===context.owner)));
     if(found){this.activateWindow(found);return found;}
     const w=this.launch('text',context.path.split('/').pop()+' — Text Editor');
-    w.launchContext=launchContext;if(context.storage==='server')w.ownerSub=context.owner;if(context.storage==='browser')w.browserOwner=context.owner;this.render();return w;
+    w.launchContext=launchContext;if(context.storage==='mirror')w.ownerSub=context.owner;if(context.storage==='browser')w.browserOwner=context.owner;this.render();return w;
   }
   launch(app,title) {
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor',calculator:'Calculator',chat:'Chat',chess:'Chess',rooms:'Peer rooms — text chat and moves',help:'Desktop help'};
+    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
-    const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:app==='rooms'?960:820,h:app==='rooms'?720:540};
+    const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:820,h:540};
     if(personal)w.ownerSub=personal.ownerSub;
     this.windows.push(w);this.active=w.id;this.closePopups();this.render();feedback('Opened '+w.title+'.');return w;
   }
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Calculator':'calculator','Chat':'chat','Chess':'chess','Rooms':'rooms','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
@@ -405,7 +373,7 @@ class Desktop {
     this.closePopups();
     const popup=make('div','status-popup account-popup popup'),form=make('form','account-form');
     popup.dataset.statusType='account';popup.setAttribute('aria-label',mode==='register'?'Register account':'Sign in');
-    popup.append(make('h3','',mode==='register'?'Register':'Sign in'),make('p','','Linux and your open files stay open. Chat connections end when you switch identity; existing chat windows keep a read-only copy.'));
+    popup.append(make('h3','',mode==='register'?'Register':'Sign in'),make('p','','Linux and your open files stay open when you switch identity.'));
     const field=(name,label,type,autocomplete)=>{const wrapper=make('label','',label),input=make('input');input.name=name;input.type=type;input.required=true;input.autocomplete=autocomplete;input.setAttribute('aria-label',label);input.maxLength=type==='password'?(mode==='register'?64:256):28;input.minLength=type==='password'?1:3;if(type!=='password'){input.pattern='[a-zA-Z][a-zA-Z0-9]{2,27}';input.autocapitalize='none';input.spellcheck=false;}wrapper.append(input);form.append(wrapper);return input;};
     const username=field('username','Username','text','username'),password=field('password','Password','password',mode==='register'?'new-password':'current-password');
     const confirmation=mode==='register'?field('confirmation','Confirm password','password','new-password'):null;
@@ -448,7 +416,7 @@ class Desktop {
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
       ['Minimize','M4 19 H20',()=>{w.minimized=true;this.active=null;}],
       ['Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:this.config.panelHeight,w:resolution[0],h:resolution[1]-this.config.panelHeight});}}],
-      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if(w.editor?.dirty&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.app==='chat')desktopNetwork.releaseView(w);if(w.app==='rooms')desktopNetwork.releaseRoomView(w);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
+      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if(w.editor?.dirty&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
     ];
     actions.forEach(([name,path,action])=>{
       const b=button(name,()=>{action();if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();});b.title=name;
@@ -474,14 +442,7 @@ class Desktop {
   }
   windowContent(w) {
     const body=make('div','window-content');
-    if(isAccountApp(w.app))return accountAppContent(w);
-    if(w.archivedNetwork){
-      body.classList.add('help-content');body.append(make('p','','Previous identity · read-only. Open a new Chat or Rooms window to reconnect.'));
-      const record=w.archivedNetwork;
-      if(record.pgn)body.append(textButton('Download previous PGN',()=>downloadGuestFile('previous-match.pgn',record.pgn)));
-      if(record.chat)body.append(textButton('Download previous chat',()=>downloadGuestFile('previous-chat.txt',record.chat)));
-      body.append(make('pre','account-archive',record.text));if(record.draft)body.append(make('h4','','Unsent draft'),make('pre','account-archive',record.draft));return body;
-    }
+    if(isAccountApp(w.app))return publicAppContent('personal-template',this,w);
     return publicAppContent(w.app,this,w);
   }
 }
@@ -532,7 +493,7 @@ function initializeVoiceControl(){
   function destination(){
     const win=document.querySelector('.window.focused:not([hidden])');
     if(!win)return null;
-    const input=lastInput?.isConnected&&win.contains(lastInput)?lastInput:win.querySelector('.guest-editor,[data-chat-draft],.terminal-input,[aria-label="Room chat message"]')||win.querySelector('textarea:not([readonly]),input:not([type]),input[type=text]');
+    const input=lastInput?.isConnected&&win.contains(lastInput)?lastInput:win.querySelector('.guest-editor,.terminal-input')||win.querySelector('textarea:not([readonly]),input:not([type]),input[type=text]');
     if(!input)return null;
     if(input.matches('.terminal-input,[data-serial-view]')){
       const vm=v86Instance;if(guestState!=='ready'||!vm)return null;
@@ -596,11 +557,7 @@ async function recoverDesktopSession(){
   renewingIdentity=true;
   try{
     const {refreshRecoveryPolicy}=await import('./assets/desktop/recovery-policy.mjs');
-    const fresh=await refreshRecoveryPolicy(identityConfig);
-    // Keep the shared config object used by the guest and network pool. The
-    // reconciler permits transport preference, never authority/endpoint changes.
-    identityConfig.rtc=fresh.rtc;
-    if(identityConfig.discovery)identityConfig.discovery=fresh.discovery;
+    await refreshRecoveryPolicy(identityConfig);
     try{await identityModule.renewSession(identityConfig,currentSession);guestNetworkAdapter?.syncSession();}
     catch(error){
       if(error.status!==401)throw error;
@@ -612,11 +569,11 @@ async function initializeSession(){
   const response=await fetch('config.json',{cache:'no-store'});
   if(!response.ok)throw Error('Identity configuration could not be loaded.');
   identityConfig=await response.json();
-  identityModule=await import('./network/identity.mjs?originProfile=codi-session-ice-1');
+  identityModule=await import('./network/identity.mjs');
   const session=await requiredLogin();
   sessionViews(session);
   currentSession=session;
-  await desktopNetwork.initialize(session,identityConfig);
+  startMirror();
   document.documentElement.classList.remove('login-required');
   if(identityConfig.identity.mode==='server')identityTimer=setInterval(maintainIdentity,30000);
   for(const surface of surfaces.values())surface.render();
@@ -642,12 +599,10 @@ async function accountSession(mode,username,password){
   if(identityConfig?.identity.mode!=='server'||!identityConfig.accounts?.actions?.includes(mode))throw Error('Accounts are unavailable in this preview.');
   const {makeKey,thumbprint,sameKey}=await import('./network/crypto.mjs'),key=await makeKey(),sid=crypto.randomUUID();
   const session={privateKey:key.privateKey,public:{sid,sub:sid,name:'anon-'+sid.slice(0,8),kind:'anonymous',key:key.publicKey,certificate:null}};
-  identityModule.bindRequestPreference(identityConfig);
   const result=await identityModule.authenticatedRequest(identityConfig.identity,session,identityConfig.identity.apiBase+'/auth',{username,password,operation:mode});
   if(!sameKey(result.identity.key,session.public.key))throw Error('Server changed the session key.');
   const trust=await identityModule.verifyIdentity(result.identity,identityConfig.identity);
   if(result.identity.kind!=='registered'||result.identity.name!==username.trim().toLowerCase())throw Error('Account identity did not match.');
-  session.rtc=identityModule.sessionTurnConfig(identityConfig,result,trust);
   session.public=result.identity;session.token=result.session_token;session.trust=trust;session.fingerprint=await thumbprint(session.public.key);return session;
 }
 function requiredLogin(){
@@ -673,16 +628,9 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const next=await accountSession(mode,username,password);
     if(!stillWanted()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});return;}
     const previous=currentSession;
-    // Snapshot network windows before their old identity's resource pool closes.
-    for(const surface of surfaces.values())for(const w of surface.windows){
-      if(!['chat','rooms','chess'].includes(w.app)||w.archivedNetwork)continue;
-      const win=surface.root.querySelector('[data-window="'+w.id+'"]'),body=win?.querySelector('.window-content');
-      w.archivedNetwork={...desktopNetwork.archiveView(w),text:body?.innerText||'',draft:[...(body?.querySelectorAll('[data-chat-draft],[data-mesh-draft],[data-routed-draft],[data-hosted-draft],[aria-label="Room chat message"]')||[])].map(n=>n.value).filter(Boolean).join('\n')};
-      if(body){disposePublicAppView(win,'Identity changed');body.replaceWith(surface.windowContent(w));}
-    }
-    retireAccountLinks();desktopNetwork.close();currentSession=sessionViews(next);
+    currentSession=sessionViews(next);
+    startMirror();
     guestNetworkAdapter?.syncSession();
-    try{await desktopNetwork.initialize(next,identityConfig);}catch(error){feedback('Account changed; chat could not reconnect: '+error.message);}
     for(const surface of surfaces.values()){surface.closePopups();surface.render();}
     if(previous)identityModule.logoutSession(identityConfig,previous).catch(()=>{});
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
@@ -693,8 +641,7 @@ async function maintainIdentity(){
   if(!currentSession||renewingIdentity||accountTransition)return;
   const session=currentSession;
   const expiry=session.trust.claims?.exp;
-  const turnExpiry=session.rtc?.expiresAt;
-  if((!expiry||expiry-Date.now()/1000>180)&&(!turnExpiry||turnExpiry-Date.now()/1000>90))return;
+  if(!expiry||expiry-Date.now()/1000>180)return;
   renewingIdentity=true;
   try{
     await identityModule.renewSession(identityConfig,session);
@@ -705,7 +652,7 @@ async function maintainIdentity(){
     if(currentSession===session){
       const expired=expiry<=Date.now()/1000;
       feedback('Identity renewal failed: '+error.message);
-      if(expired){desktopNetwork.disconnect();guestNetworkAdapter?.reset();}
+      if(expired)guestNetworkAdapter?.reset();
     }
   }finally{renewingIdentity=false;for(const surface of surfaces.values())if(surface.appIdentity!==signedInSubject())surface.render();}
 }
@@ -740,7 +687,7 @@ async function startGuest(){
       ...(relay?{net_device:controlled?{type:'virtio'}:{type:'virtio',relay_url:relay.href}}:{}),
       filesystem:{},cmdline:'console=ttyS0,115200n8 rdinit=/init panic=-1 quiet loglevel=0'+(relay?' guest_net=1':''),autostart:true,disable_keyboard:true,disable_mouse:true,disable_speaker:true};
     v86Instance=emulator;
-    if(controlled)guestNetworkAdapter=new GuestNetworkAdapter(emulator,identityConfig,{getSession:()=>currentSession,onStatus:value=>{if(value.mode==='disconnected')feedback('Linux Internet is unavailable; retrying. Files and browser chat remain available.');}});
+    if(controlled)guestNetworkAdapter=new GuestNetworkAdapter(emulator,identityConfig,{getSession:()=>currentSession,onStatus:value=>{if(value.mode==='disconnected')feedback('Linux Internet is unavailable; retrying. Browser files remain available.');}});
     emulator.add_listener('download-error',event=>{if(epoch===bootEpoch)failGuest('Could not load '+event.file_name+'. Check that the static server is running.');});
     setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
     emulator.add_listener('serial0-output-byte',byte=>{if(epoch!==bootEpoch)return;receiveGuestSerial(String.fromCharCode(byte));});
@@ -749,10 +696,8 @@ async function startGuest(){
   }catch(error){if(epoch!==bootEpoch)return;guestNetworkAdapter?.destroy();guestNetworkAdapter=null;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}failGuest(error.message||String(error));}
 }
 async function endSession(){
-  retireAccountLinks();
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
-  desktopNetwork.close();
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
   ++bootEpoch;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}
   if(currentSession&&identityModule){try{await identityModule.logoutSession(identityConfig,currentSession);}catch(error){console.warn('Session logout failed:',error.message);}}
@@ -764,7 +709,7 @@ async function initializeWithRecovery(){
     await initializeSession();bootRecovery?.stop();bootRecovery=null;
   }catch(error){
     clearInterval(identityTimer);identityTimer=null;
-    retireAccountLinks();desktopNetwork.close();if(currentSession&&identityModule)identityModule.logoutSession(identityConfig,currentSession).catch(()=>{});currentSession=null;
+    if(currentSession&&identityModule)identityModule.logoutSession(identityConfig,currentSession).catch(()=>{});currentSession=null;
     feedback('Waiting for server: '+error.message);
     if(!bootRecovery){
       try{const {startLifecycle}=await import('./assets/desktop/lifecycle.mjs'),base=new URL('.',document.baseURI).pathname.replace(/\/$/,'');bootRecovery=startLifecycle({config:{identity:{apiBase:base+'/api/v1'},desktopLifecycle:{version:'codi-desktop-lifecycle/1',statusPath:base+'/api/v1/desktop-status'}},roots:()=>[document.querySelector('#previews'),document.querySelector('#voice-control')],getGuestLink:()=>false,hasRunningGuest:()=>false,initiallyDisconnected:true});}
