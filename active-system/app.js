@@ -183,7 +183,7 @@ class Desktop {
   fitWindow(w){
     const width=this.viewport.clientWidth,height=this.viewport.clientHeight,top=this.config.panelHeight;
     if(this.mobile){
-      if(!w.mobileRect){if(!w.desktopRect)w.desktopRect=windowRect(w);const stagger=(this.windows.filter(n=>n.workspace===w.workspace).indexOf(w)%4)*24;w.mobileRect={x:8,y:top+8+stagger,w:Math.max(1,width-16),h:Math.min(w.h,Math.max(150,height-top-24-stagger))};}
+      if(!w.mobileRect){if(!w.desktopRect)w.desktopRect=windowRect(w);const stagger=(this.windows.filter(n=>n.workspace===w.workspace).indexOf(w)%4)*24;w.mobileRect={x:8,y:top+8+stagger,w:Math.max(1,width-16),h:Math.min(w.h,Math.max(150,height-top-24-stagger))};if(!w.restore)w.restore={...w.mobileRect};}
       const rect=w.restore?{x:0,y:top,w:width,h:height-top}:w.mobileRect;
       Object.assign(w,rect);w.w=Math.min(w.w,width);w.h=Math.min(w.h,Math.max(this.config.titleHeight,height-top));
     }
