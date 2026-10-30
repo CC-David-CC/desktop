@@ -121,7 +121,7 @@ const desktopMenu=[
   {name:'Diagramming',icon:'image-editor',children:[{name:'Image Editor',icon:'image-editor'},{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
   {name:'3D Printing',icon:'help',children:[{name:'Kiri:Moto',icon:'kiri-moto'},{name:'Mesh:Tool',icon:'mesh-tool'},{name:'G-code Preview',icon:'gcode-preview'},{name:'Replicad',icon:'replicad'}]},
   {name:'Audio Tools',icon:'help',children:[{name:'Audio Editor',icon:'help'}]},
-  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{separator:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
+  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{separator:true},{name:'CodeMirror 6',icon:'help',disabled:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
   {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:reference.icons.applications}
 ];
 function initialWindows(){return [];}
@@ -521,6 +521,7 @@ function initializeVoiceControl(){
       return {element:input,valid:()=>v86Instance===vm&&guestState==='ready'&&terminalSessions.get(id)===session&&!session?.exited,insert:text=>{win.querySelector('[data-serial-view]')?.followOutput?.();insertTerminalText(id,text);}};
     }
     if(!editable(input))return null;
+    if(typeof input.codiVoiceCapture==='function')return input.codiVoiceCapture();
     if(input.isContentEditable){
       const selection=getSelection();if(!selection?.rangeCount||!input.contains(selection.anchorNode))return null;
       const range=selection.getRangeAt(0).cloneRange(),before=input.textContent;
