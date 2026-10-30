@@ -86,4 +86,4 @@ async function mirrorFileContext(){
 function startMirror(){if(signedInSubject()&&serverFilesAvailable())mirrorFileContext().catch(console.error);else{mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=null;}}
 function openMirrorEditor(desktop,owner,path){if(owner===signedInSubject())desktop.open('text',Object.freeze({version:1,storage:'mirror',path,owner}));}
 
-function openMirrorDocument(desktop,owner,path){if(owner!==signedInSubject())return;const app=/\.(?:codisheet|xlsx)$/i.test(path)?'spreadsheet':/\.pdf$/i.test(path)?'pdf-viewer':/\.codidoc$/i.test(path)?'document-editor':/\.(?:png|jpe?g|webp)$/i.test(path)?'image-editor':'text';desktop.open(app,Object.freeze({version:1,storage:'mirror',path,owner}));}
+function openMirrorDocument(desktop,owner,path){if(owner!==signedInSubject())return;const app=/\.(?:codisheet|xlsx)$/i.test(path)?'spreadsheet':/\.pdf$/i.test(path)?'pdf-viewer':/\.(?:doc|codidoc)$/i.test(path)?'document-editor':/\.(?:png|jpe?g|webp)$/i.test(path)?'image-editor':'text';desktop.open(app,Object.freeze({version:1,storage:'mirror',path,owner}));}
