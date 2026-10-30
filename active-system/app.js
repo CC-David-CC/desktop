@@ -89,6 +89,10 @@ function icon(key, direct = false) {
     'prototype-dashboard':'<rect x="2" y="3" width="20" height="18" rx="2" fill="#e8ddf5"/><path d="M2 8h20M10 8v13M10 14h12"/>',
     'kiri-moto':'<path d="M5 6h14v12H5zM7 3h10M8 18v3m8-3v3"/><path d="M9 11h6M12 8v6"/>',
     'mesh-tool':'<path d="M12 2 21 7v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/>',
+    'diagrams-net':'<path d="M3 4h6v5H3zM15 15h6v5h-6zM6 9v4h12v2"/>',
+    'replicad':'<path d="M12 2 21 7v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/>',
+    'excalidraw':'<path d="M4 17 16 5l3 3L7 20H4z"/>',
+    'svg-editor':'<path d="M4 4h16v16H4zM7 16l5-9 5 9z"/>',
     'gcode-preview':'<path d="M4 4h16v16H4zM7 15l3-5 3 3 3-6"/>',
     spreadsheet:'<rect x="3" y="3" width="18" height="18" rx="2" fill="#dcf1e5"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
     'pdf-viewer':'<path fill="#fce2e2" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 12h8M8 16h8M8 20h5"/>',
@@ -111,32 +115,20 @@ function button(label, handler, cls = '') {
 }
 function textButton(label, handler, cls = '') { const n=button(label,handler,cls);n.textContent=label;return n; }
 const desktopMenu=[
-  {name:'Terminal',icon:reference.icons.terminal},
-  {name:'Files',icon:reference.icons.files},
-  {name:'Text Editor',icon:'text'},
-  {name:'Document Editor',icon:'document-editor'},
-  {name:'Spreadsheet',icon:'spreadsheet'},
-  {name:'Data Explorer',icon:'spreadsheet'},
-  {name:'PDF Viewer',icon:'pdf-viewer'},
-  {name:'Image Editor',icon:'image-editor'},
-  {name:'Calculator',icon:'calculator'},
-  {name:'3D Printing',icon:'help',children:[{name:'Kiri:Moto',icon:'kiri-moto'},{name:'Mesh:Tool',icon:'mesh-tool'},{name:'G-code Preview',icon:'gcode-preview'}]},
+  {name:'Office',icon:'document-editor',children:[{name:'Text Editor',icon:'text'},{name:'Document Editor',icon:'document-editor'},{name:'Spreadsheet',icon:'spreadsheet'},{name:'Data Explorer (Perspective)',icon:'spreadsheet'},{name:'PDF Viewer',icon:'pdf-viewer'}]},
+  {name:'Diagramming',icon:'image-editor',children:[{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
+  {name:'3D Printing',icon:'help',children:[{name:'Kiri:Moto',icon:'kiri-moto'},{name:'Mesh:Tool',icon:'mesh-tool'},{name:'G-code Preview',icon:'gcode-preview'},{name:'Replicad',icon:'replicad'}]},
   {name:'Audio Tools',icon:'help',children:[{name:'Audio Editor',icon:'help'}]},
-  {name:'System Tools',icon:'help',children:[{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true}]},
-  {separator:true}, {name:'Help',icon:'help'},
-  {name:'End session',icon:reference.icons.applications}
+  {name:'Image Editor',icon:'image-editor'}, {name:'Calculator',icon:'calculator'},
+  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{separator:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
+  {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:reference.icons.applications}
 ];
-function initialWindows() {
-  return [
-    {id:2,app:'terminal',title:'Terminal — guest',workspace:0,x:24,y:70,w:Math.min(900,innerWidth-48),h:Math.min(610,innerHeight-100)},
-    {id:4,app:'files',title:'Home — Files',workspace:0,x:Math.max(40,innerWidth-640),y:130,w:Math.min(600,innerWidth-60),h:Math.min(500,innerHeight-160)}
-  ];
-}
+function initialWindows(){return [];}
 const windowRect=w=>({x:w.x,y:w.y,w:w.w,h:w.h});
 const compactDesktop=width=>width<=720||(matchMedia('(pointer:coarse)').matches&&width<1024);
 class Desktop {
   constructor(parent, config, label, state) {
-    this.baseConfig = {...config};this.config={...config}; this.windows = state?.windows || initialWindows(); this.current=state?.current || 0;this.active=state?.active ?? 2;
+    this.baseConfig = {...config};this.config={...config}; this.windows = state?.windows || initialWindows(); this.current=state?.current || 0;this.active=state?.active ?? null;
     this.workspacePins=new Map();this.pins=state?.pins || []; this.menuPath=[]; this.menu=state?.menu || null; this.nextId=Math.max(10,...this.windows.map(w=>w.id))+1;
     this.root=make('div','desktop');this.root.dataset.screen=label;
     this.spacer=make('div','screen-spacer');this.spacer.append(this.root);
@@ -148,6 +140,9 @@ class Desktop {
     this.render();
   }
   dispose(){this.observer.disconnect();}
+  layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
+  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)).slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.excalidraw||w.svgEditor||w.diagramsNet;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:w.x,y:w.y,w:w.w,h:w.h,minimized:!!w.minimized,rolled:!!w.rolled,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));}catch(error){console.warn('Could not save window layout:',error.message);}}
+  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['terminal','files','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
   get pins(){return (this.workspacePins.get(this.current)||[]).filter(availableApplication);}
   set pins(value){const other=(this.workspacePins.get(this.current)||[]).filter(app=>!availableApplication(app));this.workspacePins.set(this.current,[...new Set([...other,...value])]);}
   scale() {
@@ -222,6 +217,7 @@ class Desktop {
     }
     this.scale();
     if(this.menu)this.showMenu(this.applicationItems(),0,0,c.panelHeight);
+    this.saveLayout();
   }
   applicationItems(){
     const apps=accountApplications();
@@ -301,7 +297,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -311,12 +307,12 @@ class Desktop {
     w.minimized=false;this.current=w.workspace;this.active=w.id;this.workspaceFocus.set(w.workspace,w.id);this.closePopups();this.render();
   }
   open(app,context){
-    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor','gcode-preview','mesh-tool'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
+    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor','gcode-preview','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
     if(!signedInSubject()||context.owner!==signedInSubject())throw Error('Sign in to open this private document');
     const launchContext=Object.freeze({version:1,storage:context.storage,path:context.path,owner:context.owner});
     const found=this.windows.find(w=>w.app===app&&w.ownerSub===context.owner&&(w.spreadsheet?.path||w.documentEditor?.path||w.editor?.path||w.launchContext?.path)===context.path);
     if(found){this.activateWindow(found);return found;}
-    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':app==='data-explorer'?'Data Explorer':app==='audio-editor'?'Audio Editor':app==='gcode-preview'?'G-code Preview':app==='mesh-tool'?'Mesh:Tool':'Image Editor';
+    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':app==='data-explorer'?'Data Explorer':app==='audio-editor'?'Audio Editor':app==='gcode-preview'?'G-code Preview':app==='mesh-tool'?'Mesh:Tool':app==='excalidraw'?'Excalidraw':app==='svg-editor'?'SVG-edit':app==='diagrams-net'?'diagrams.net':'Image Editor';
     const w=this.launch(app,context.path.split('/').pop()+' — '+title);
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
@@ -328,7 +324,7 @@ class Desktop {
   launch(app,title) {
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
+    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:820,h:540};
     if(personal)w.ownerSub=personal.ownerSub;
@@ -337,7 +333,7 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
@@ -437,7 +433,7 @@ class Desktop {
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
       ['Minimize','M4 19 H20',()=>{w.minimized=true;this.active=null;}],
       ['Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:this.config.panelHeight,w:resolution[0],h:resolution[1]-this.config.panelHeight});}}],
-      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty||w.audioEditor?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
+      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty||w.audioEditor?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
     ];
     actions.forEach(([name,path,action])=>{
       const b=button(name,()=>{action();if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();});b.title=name;
@@ -457,7 +453,7 @@ class Desktop {
         if(resize){w.w=Math.min(resolution[0]-w.x,Math.max(340,start.ww+dx));w.h=Math.min(resolution[1]-w.y,Math.max(this.config.titleHeight+90,start.wh+dy));win.style.width=w.w+'px';win.style.height=w.h+'px';}
         else{w.x=Math.max(0,Math.min(resolution[0]-100,start.wx+dx));w.y=Math.max(this.config.panelHeight,Math.min(resolution[1]-this.config.titleHeight,start.wy+dy));win.style.left=w.x+'px';win.style.top=w.y+'px';}
       };
-      const up=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',up);handle.removeEventListener('pointercancel',up);handle.removeEventListener('lostpointercapture',up);if(this.mobile)w.mobileRect=windowRect(w);this.scale();};
+      const up=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',up);handle.removeEventListener('pointercancel',up);handle.removeEventListener('lostpointercapture',up);if(this.mobile)w.mobileRect=windowRect(w);this.scale();this.saveLayout();};
       handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',up);handle.addEventListener('pointercancel',up);handle.addEventListener('lostpointercapture',up);
     });
   }
@@ -475,6 +471,8 @@ function renderPreviews(){
 }
 renderPreviews();
 initializeVoiceControl();
+window.addEventListener('pagehide',()=>{for(const surface of surfaces.values())surface.saveLayout();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const surface of surfaces.values())surface.saveLayout();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const desktop of surfaces.values())desktop.closePopups();});
 function initializeVoiceControl(){
   const dock=make('div','voice-control');dock.id='voice-control';
@@ -597,7 +595,7 @@ async function initializeSession(){
   startMirror();
   document.documentElement.classList.remove('login-required');
   if(identityConfig.identity.mode==='server')identityTimer=setInterval(maintainIdentity,30000);
-  for(const surface of surfaces.values())surface.render();
+  for(const surface of surfaces.values()){surface.restoreLayout();surface.render();}
   refreshTerminals();
   await startGuest();
   if(identityConfig.desktopLifecycle){
@@ -649,10 +647,11 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const next=await accountSession(mode,username,password);
     if(!stillWanted()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});return;}
     const previous=currentSession;
+    for(const surface of surfaces.values())surface.saveLayout();
     currentSession=sessionViews(next);
     startMirror();
     guestNetworkAdapter?.syncSession();
-    for(const surface of surfaces.values()){surface.closePopups();surface.render();}
+    for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(previous)identityModule.logoutSession(identityConfig,previous).catch(()=>{});
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
@@ -717,6 +716,7 @@ async function startGuest(){
   }catch(error){if(epoch!==bootEpoch)return;guestNetworkAdapter?.destroy();guestNetworkAdapter=null;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}failGuest(error.message||String(error));}
 }
 async function endSession(){
+  for(const desktop of surfaces.values())desktop.saveLayout();
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
