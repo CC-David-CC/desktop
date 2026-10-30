@@ -87,6 +87,9 @@ function icon(key, direct = false) {
     'prototype-canvas':'<rect x="3" y="3" width="18" height="18" rx="3" fill="#d5eeec"/><path d="M7 12h10M12 7v10"/>',
     'prototype-notes':'<path fill="#fff0ce" d="M5 2h13l3 4v16H5z"/><path d="M9 7h7M9 11h8M9 15h6M9 19h5"/>',
     'prototype-dashboard':'<rect x="2" y="3" width="20" height="18" rx="2" fill="#e8ddf5"/><path d="M2 8h20M10 8v13M10 14h12"/>',
+    spreadsheet:'<rect x="3" y="3" width="18" height="18" rx="2" fill="#dcf1e5"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
+    'pdf-viewer':'<path fill="#fce2e2" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 12h8M8 16h8M8 20h5"/>',
+    'document-editor':'<path fill="#e3f0fc" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 11h9M8 15h9M8 19h6"/>',
     'image-editor':'<rect x="3" y="4" width="18" height="16" rx="2" fill="#e3f0fc"/><circle cx="8" cy="9" r="2"/><path d="M5 18l5-5 3 3 2-2 4 4"/>',
     text:'<path fill="#fff" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 11h9M8 15h9M8 19h6"/>',
     calculator:'<rect x="4" y="2" width="16" height="20" rx="2" fill="#d8dee2"/><path fill="#b8dcdf" d="M7 5h10v5H7z"/><path d="M7 13h2m2 0h2m2 0h2M7 16h2m2 0h2m2 0h2M7 19h2m2 0h2m2 0h2"/>',
@@ -108,6 +111,9 @@ const desktopMenu=[
   {name:'Terminal',icon:reference.icons.terminal},
   {name:'Files',icon:reference.icons.files},
   {name:'Text Editor',icon:'text'},
+  {name:'Document Editor',icon:'document-editor'},
+  {name:'Spreadsheet',icon:'spreadsheet'},
+  {name:'PDF Viewer',icon:'pdf-viewer'},
   {name:'Image Editor',icon:'image-editor'},
   {name:'Calculator',icon:'calculator'},
   {separator:true}, {name:'Help',icon:'help'},
@@ -288,7 +294,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -298,19 +304,24 @@ class Desktop {
     w.minimized=false;this.current=w.workspace;this.active=w.id;this.workspaceFocus.set(w.workspace,w.id);this.closePopups();this.render();
   }
   open(app,context){
-    if(!['text','image-editor'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
+    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
     if(!signedInSubject()||context.owner!==signedInSubject())throw Error('Sign in to open this private document');
     const launchContext=Object.freeze({version:1,storage:context.storage,path:context.path,owner:context.owner});
-    const found=this.windows.find(w=>w.app===app&&w.ownerSub===context.owner&&(w.editor?.path||w.launchContext?.path)===context.path);
+    const found=this.windows.find(w=>w.app===app&&w.ownerSub===context.owner&&(w.spreadsheet?.path||w.documentEditor?.path||w.editor?.path||w.launchContext?.path)===context.path);
     if(found){this.activateWindow(found);return found;}
-    const title=app==='text'?'Text Editor':'Image Editor';
+    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':'Image Editor';
     const w=this.launch(app,context.path.split('/').pop()+' — '+title);
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
+  }
+  openPdfPreview(owner,bytes,name){
+    if(!signedInSubject()||owner!==signedInSubject()||!(bytes instanceof Uint8Array)||bytes.length<1||bytes.length>8*1024*1024)throw Error('Cannot open this PDF preview.');
+    const w=this.launch('pdf-viewer',(name.split('/').pop()||'Document')+' — Print preview');
+    w.ownerSub=owner;w.previewBytes=Uint8Array.from(bytes);this.render();return w;
   }
   launch(app,title) {
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
+    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:820,h:540};
     if(personal)w.ownerSub=personal.ownerSub;
@@ -319,7 +330,7 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
@@ -419,7 +430,7 @@ class Desktop {
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
       ['Minimize','M4 19 H20',()=>{w.minimized=true;this.active=null;}],
       ['Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:this.config.panelHeight,w:resolution[0],h:resolution[1]-this.config.panelHeight});}}],
-      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
+      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
     ];
     actions.forEach(([name,path,action])=>{
       const b=button(name,()=>{action();if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();});b.title=name;
