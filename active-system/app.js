@@ -598,6 +598,7 @@ async function initializeSession(){
   if(identityConfig.identity.mode==='server')identityTimer=setInterval(maintainIdentity,30000);
   for(const surface of surfaces.values()){surface.restoreLayout();surface.render();}
   refreshTerminals();
+  if(identityConfig.guestNetwork){const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error'});if(!cookie.ok)throw Error('Linux network connection could not be initialized.');}
   await startGuest();
   if(identityConfig.desktopLifecycle){
     bootRecovery?.stop();bootRecovery=null;
