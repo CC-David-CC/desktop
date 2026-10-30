@@ -326,7 +326,7 @@ class Desktop {
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
   openPdfPreview(owner,bytes,name){
-    if(!signedInSubject()||owner!==signedInSubject()||!(bytes instanceof Uint8Array)||bytes.length<1||bytes.length>8*1024*1024)throw Error('Cannot open this PDF preview.');
+    if(!signedInSubject()||owner!==signedInSubject()||!(bytes instanceof Uint8Array)||bytes.length<1||bytes.length>128*1024*1024)throw Error('Cannot open this PDF preview.');
     const w=this.launch('pdf-viewer',(name.split('/').pop()||'Document')+' — Print preview');
     w.ownerSub=owner;w.previewBytes=Uint8Array.from(bytes);this.render();return w;
   }

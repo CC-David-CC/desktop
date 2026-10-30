@@ -91,9 +91,9 @@ async function guestFileContext(){
  const valid=()=>signedInSubject()===owner&&currentSession===session&&guestFiles.ready&&guestFiles.emulator===emulator;
  const check=()=>{if(!valid())throw Error('Linux guest restarted. Reopen Linux home.');};
  const hash=async data=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',data)),v=>v.toString(16).padStart(2,'0')).join('');
- const read=async path=>{check();const info=await guestFiles.stat(path);if(info.dir)throw Error('Choose a file.');if(info.size>8*1024*1024)throw Error('Files are limited to 8 MiB.');const data=await guestFiles.read(path);check();return {data,version:await hash(data),status:'synced'};};
+ const read=async path=>{check();const info=await guestFiles.stat(path);if(info.dir)throw Error('Choose a file.');if(info.size>128*1024*1024)throw Error('Files are limited to 128 MiB.');const data=await guestFiles.read(path);check();return {data,version:await hash(data),status:'synced'};};
  const files={
-  async list(path='/'){check();const entries=await guestFiles.list(path),rows=[];if(entries.length>500)throw Error('Linux folder has more than 500 items.');for(const f of entries){check();rows.push({path:f.path,name:f.name,directory:f.dir,bytes:f.dir?null:f.size,version:f.dir?null:f.size>8*1024*1024?'too-large':(await read(f.path)).version,status:'synced'});}return {entries:rows};},
+  async list(path='/'){check();const entries=await guestFiles.list(path),rows=[];if(entries.length>500)throw Error('Linux folder has more than 500 items.');for(const f of entries){check();rows.push({path:f.path,name:f.name,directory:f.dir,bytes:f.dir?null:f.size,version:f.dir?null:f.size>128*1024*1024?'too-large':(await read(f.path)).version,status:'synced'});}return {entries:rows};},
   async status(){return {ephemeral:true};},async sync(){check();},
   subscribe(fn){const notify=()=>{if(valid())fn();};window.addEventListener('codi-guest-files-changed',notify);return ()=>{window.removeEventListener('codi-guest-files-changed',notify);};},
   read,
