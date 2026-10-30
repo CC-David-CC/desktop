@@ -648,7 +648,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const next=await accountSession(mode,username,password);
     if(!stillWanted()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});return;}
     const previous=currentSession;
-    if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){stopGuestAccountMount();++bootEpoch;await v86Instance.stop();v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
+    if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;await v86Instance.stop();v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     for(const surface of surfaces.values())surface.saveLayout();
     currentSession=sessionViews(next);
     startMirror();
@@ -680,9 +680,9 @@ async function maintainIdentity(){
 }
 let bootEpoch=0;
 let bootFailed=false;
-function failGuest(message){stopGuestAccountMount();bootFailed=true;guestState='error';guestMessage=String(message);guestFiles.ready=false;appendSerial('\r\nGuest error: '+guestMessage+'\r\n');if(serialFrame)cancelAnimationFrame(serialFrame);flushSerial();feedback(guestMessage);refreshTerminals();}
+function failGuest(message){bootFailed=true;guestState='error';guestMessage=String(message);guestFiles.ready=false;appendSerial('\r\nGuest error: '+guestMessage+'\r\n');if(serialFrame)cancelAnimationFrame(serialFrame);flushSerial();feedback(guestMessage);refreshTerminals();}
 async function startGuest(){
-  stopGuestAccountMount();guestFiles.ready=false;
+  guestFiles.ready=false;
   const epoch=++bootEpoch;
   try{
     guestState='starting';guestMessage='Loading local Linux kernel and initramfs…';refreshTerminals();
@@ -714,12 +714,12 @@ async function startGuest(){
     emulator.add_listener('download-error',event=>{if(epoch===bootEpoch)failGuest('Could not load '+event.file_name+'. Check that the static server is running.');});
     setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
     emulator.add_listener('serial0-output-byte',byte=>{if(epoch!==bootEpoch)return;receiveGuestSerial(String.fromCharCode(byte));});
-    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and shared home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})));await startGuestAccountMount();}).catch(error=>{failGuest('Shared files: '+error.message);});refreshTerminals();});
+    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and temporary home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})));}).catch(error=>{failGuest('Shared files: '+error.message);});refreshTerminals();});
     emulator.start(options);
   }catch(error){if(epoch!==bootEpoch)return;guestNetworkAdapter?.destroy();guestNetworkAdapter=null;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}failGuest(error.message||String(error));}
 }
 async function endSession(){
-  stopGuestAccountMount();
+
   for(const desktop of surfaces.values())desktop.saveLayout();
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);

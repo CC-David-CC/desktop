@@ -84,14 +84,6 @@ async function mirrorFileContext(){
   return mirrorContextPromise;
 }
 function startMirror(){if(signedInSubject()&&serverFilesAvailable())mirrorFileContext().catch(console.error);else{mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=null;}}
-let guestAccountMount=null,guestAccountMountMessage='Account folder is starting.';
-function stopGuestAccountMount(){guestAccountMount?.stop();guestAccountMount=null;guestAccountMountMessage='Account folder is unavailable.';}
-async function startGuestAccountMount(){
- stopGuestAccountMount();const session=currentSession,emulator=guestFiles.emulator;
- try{const [account,module]=await Promise.all([mirrorFileContext(),import('./assets/desktop/guest-account-mount.mjs')]);if(currentSession!==session||guestFiles.emulator!==emulator||!account.valid())return;
-  guestAccountMount=module.createGuestAccountMount({guest:guestFiles,account,onStatus:state=>{guestAccountMountMessage=state.message;window.dispatchEvent(new Event('codi-guest-mount-status'));}});
- }catch(error){guestAccountMountMessage='Account folder unavailable: '+error.message;window.dispatchEvent(new Event('codi-guest-mount-status'));}
-}
 // The v86 home is an in-memory 9p filesystem. It is not the account mirror.
 async function guestFileContext(){
  const owner=signedInSubject(),session=currentSession,emulator=guestFiles.emulator;
@@ -102,8 +94,8 @@ async function guestFileContext(){
  const read=async path=>{check();const info=await guestFiles.stat(path);if(info.dir)throw Error('Choose a file.');if(info.size>8*1024*1024)throw Error('Files are limited to 8 MiB.');const data=await guestFiles.read(path);check();return {data,version:await hash(data),status:'synced'};};
  const files={
   async list(path='/'){check();const entries=await guestFiles.list(path),rows=[];if(entries.length>500)throw Error('Linux folder has more than 500 items.');for(const f of entries){check();rows.push({path:f.path,name:f.name,directory:f.dir,bytes:f.dir?null:f.size,version:f.dir?null:f.size>8*1024*1024?'too-large':(await read(f.path)).version,status:'synced'});}return {entries:rows};},
-  async status(){return {ephemeral:true,mountMessage:guestAccountMountMessage};},async sync(){check();},
-  subscribe(fn){const notify=()=>{if(valid())fn();};window.addEventListener('codi-guest-files-changed',notify);window.addEventListener('codi-guest-mount-status',notify);return ()=>{window.removeEventListener('codi-guest-files-changed',notify);window.removeEventListener('codi-guest-mount-status',notify);};},
+  async status(){return {ephemeral:true};},async sync(){check();},
+  subscribe(fn){const notify=()=>{if(valid())fn();};window.addEventListener('codi-guest-files-changed',notify);return ()=>{window.removeEventListener('codi-guest-files-changed',notify);};},
   read,
   async write(path,data,expected=null){check();let old=null;try{old=await read(path);}catch(error){if(!String(error.message).startsWith('File or folder not found:'))throw error;}if(expected===null?!!old:!old||old.version!==expected)throw Error('Linux file changed; reload before saving.');await guestFiles.write(path,data);const r=await read(path);guestFiles.changed();return r;},
   async mkdir(path){check();await guestFiles.mkdir(path);},
