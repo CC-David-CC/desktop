@@ -1,6 +1,6 @@
 'use strict';
 let publicAppLoader;
-function publicAppHost(desktop,w){return {version:2,desktop,w,ui:{make,textButton,appInput,feedback},session:()=>currentSession,guestState:()=>guestState,guestMessage:()=>guestMessage,storage:{mirrorFileContext,openMirrorEditor,signedInSubject},terminal:{terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
+function publicAppHost(desktop,w){return {version:2,desktop,w,ui:{make,textButton,appInput,feedback},session:()=>currentSession,guestState:()=>guestState,guestMessage:()=>guestMessage,storage:{mirrorFileContext,openMirrorEditor,openMirrorDocument,signedInSubject},terminal:{terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
 function publicAppContent(id,desktop,w){
   const placeholder=make('div','window-content app-loading','Loading '+w.title+'…');placeholder.dataset.appLoading=id;
   const load=async()=>{
@@ -85,3 +85,5 @@ async function mirrorFileContext(){
 }
 function startMirror(){if(signedInSubject()&&serverFilesAvailable())mirrorFileContext().catch(console.error);else{mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=null;}}
 function openMirrorEditor(desktop,owner,path){if(owner===signedInSubject())desktop.open('text',Object.freeze({version:1,storage:'mirror',path,owner}));}
+
+function openMirrorDocument(desktop,owner,path){if(owner!==signedInSubject())return;const app=/\.(?:png|jpe?g|webp)$/i.test(path)?'image-editor':'text';desktop.open(app,Object.freeze({version:1,storage:'mirror',path,owner}));}
