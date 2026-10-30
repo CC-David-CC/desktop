@@ -87,6 +87,9 @@ function icon(key, direct = false) {
     'prototype-canvas':'<rect x="3" y="3" width="18" height="18" rx="3" fill="#d5eeec"/><path d="M7 12h10M12 7v10"/>',
     'prototype-notes':'<path fill="#fff0ce" d="M5 2h13l3 4v16H5z"/><path d="M9 7h7M9 11h8M9 15h6M9 19h5"/>',
     'prototype-dashboard':'<rect x="2" y="3" width="20" height="18" rx="2" fill="#e8ddf5"/><path d="M2 8h20M10 8v13M10 14h12"/>',
+    'kiri-moto':'<path d="M5 6h14v12H5zM7 3h10M8 18v3m8-3v3"/><path d="M9 11h6M12 8v6"/>',
+    'mesh-tool':'<path d="M12 2 21 7v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/>',
+    'gcode-preview':'<path d="M4 4h16v16H4zM7 15l3-5 3 3 3-6"/>',
     spreadsheet:'<rect x="3" y="3" width="18" height="18" rx="2" fill="#dcf1e5"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
     'pdf-viewer':'<path fill="#fce2e2" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 12h8M8 16h8M8 20h5"/>',
     'document-editor':'<path fill="#e3f0fc" d="M5 2h10l5 5v15H5z"/><path d="M15 2v6h5M8 11h9M8 15h9M8 19h6"/>',
@@ -117,8 +120,9 @@ const desktopMenu=[
   {name:'PDF Viewer',icon:'pdf-viewer'},
   {name:'Image Editor',icon:'image-editor'},
   {name:'Calculator',icon:'calculator'},
+  {name:'3D Printing',icon:'help',children:[{name:'Kiri:Moto',icon:'kiri-moto'},{name:'Mesh:Tool',icon:'mesh-tool'},{name:'G-code Preview',icon:'gcode-preview'}]},
   {name:'Audio Tools',icon:'help',children:[{name:'Audio Editor',icon:'help'}]},
-  {name:'System Tools',icon:'help',children:[{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true}]},
+  {name:'System Tools',icon:'help',children:[{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true}]},
   {separator:true}, {name:'Help',icon:'help'},
   {name:'End session',icon:reference.icons.applications}
 ];
@@ -297,7 +301,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer':'data-explorer','Audio Editor':'audio-editor','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -307,12 +311,12 @@ class Desktop {
     w.minimized=false;this.current=w.workspace;this.active=w.id;this.workspaceFocus.set(w.workspace,w.id);this.closePopups();this.render();
   }
   open(app,context){
-    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
+    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor','gcode-preview','mesh-tool'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
     if(!signedInSubject()||context.owner!==signedInSubject())throw Error('Sign in to open this private document');
     const launchContext=Object.freeze({version:1,storage:context.storage,path:context.path,owner:context.owner});
     const found=this.windows.find(w=>w.app===app&&w.ownerSub===context.owner&&(w.spreadsheet?.path||w.documentEditor?.path||w.editor?.path||w.launchContext?.path)===context.path);
     if(found){this.activateWindow(found);return found;}
-    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':app==='data-explorer'?'Data Explorer':app==='audio-editor'?'Audio Editor':'Image Editor';
+    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':app==='data-explorer'?'Data Explorer':app==='audio-editor'?'Audio Editor':app==='gcode-preview'?'G-code Preview':app==='mesh-tool'?'Mesh:Tool':'Image Editor';
     const w=this.launch(app,context.path.split('/').pop()+' — '+title);
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
@@ -324,7 +328,7 @@ class Desktop {
   launch(app,title) {
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
+    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:820,h:540};
     if(personal)w.ownerSub=personal.ownerSub;
@@ -333,7 +337,7 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer':'data-explorer','Audio Editor':'audio-editor','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
@@ -460,7 +464,7 @@ class Desktop {
   windowContent(w) {
     const body=make('div','window-content');
     if(isAccountApp(w.app))return publicAppContent('personal-template',this,w);
-    return publicAppContent(w.app,this,w);
+    return publicAppContent(['kiri-moto','mesh-tool'].includes(w.app)?'grid-tools':w.app,this,w);
   }
 }
 function updateScaleNote() {}
