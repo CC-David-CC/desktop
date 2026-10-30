@@ -7,8 +7,8 @@ const shipped = {
   panelHeight: reference.panelHeight, iconSize: reference.iconSize, panelFontSize: 13.3333,
   workspaceWidth: reference.workspaceWidth, workspaceCount: reference.workspaceCount,
   menuRowHeight: reference.menuRowHeight, menuFontSize: reference.menuFontSize,
-  titleHeight: reference.titleHeight, controlWidth: reference.controlWidth,
-  titleFontSize: reference.titleFontSize, titleIconSize:66, controlGlyphSize:24,
+  titleHeight: 44, controlWidth: 44,
+  titleFontSize: 14, titleIconSize:24, controlGlyphSize:20,
   workspaceLabels: false, volumeButton: false, panelLabelsBold:false
 };
 let settings = {...shipped};
