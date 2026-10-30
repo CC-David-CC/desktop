@@ -56,12 +56,12 @@ function setScreenKeyboardEnabled(enabled){
 
 function sessionName() { return currentSession?.public.kind==='registered'?currentSession.displayName:'Anon'; }
 function refreshDesktopClocks(){
-  const now=new Date(),date=now.toLocaleDateString('en-CA'),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false});
+  const now=new Date(),date=now.toLocaleDateString('en-CA'),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   for(const clock of document.querySelectorAll('.panel .clock')){clock.firstChild.nodeValue=date;clock.lastChild.nodeValue=time;}
   for(const line of document.querySelectorAll('.status-popup[data-status-type="clock"] .status-line'))line.textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 }
 let desktopClockTimer;
-function scheduleDesktopClock(){clearTimeout(desktopClockTimer);refreshDesktopClocks();desktopClockTimer=setTimeout(scheduleDesktopClock,60000-Date.now()%60000+50);}
+function scheduleDesktopClock(){clearTimeout(desktopClockTimer);refreshDesktopClocks();desktopClockTimer=setTimeout(scheduleDesktopClock,1000-Date.now()%1000+25);}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)scheduleDesktopClock();});
 window.addEventListener('focus',scheduleDesktopClock);
 scheduleDesktopClock();
@@ -269,7 +269,7 @@ class Desktop {
     workspaces.title='Workspaces';workspaces.append(icon('network'),make('span','workspace-current',String(this.current+1)));p.append(workspaces);
     if(c.volumeButton)tray('volume','Volume','volume');
     const clock=button('Date and time',()=>{this.closePopups();this.showStatus('clock',clock);},'clock');
-    const now=new Date();clock.append(document.createTextNode(now.toLocaleDateString('en-CA')),make('br'),document.createTextNode(now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false})));p.append(clock);
+    const now=new Date();clock.append(document.createTextNode(now.toLocaleDateString('en-CA')),make('br'),document.createTextNode(now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})));p.append(clock);
     const account=button('Session: '+sessionName(),()=>{this.closePopups();this.showStatus('account',account);},'account');
     const symbol=make('span','account-symbol','●');symbol.setAttribute('aria-hidden','true');account.append(symbol,make('span','account-label',sessionName()));p.append(account);this.root.append(p);
   }
