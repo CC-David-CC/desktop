@@ -140,7 +140,7 @@ const compactDesktop=width=>width<=720||(matchMedia('(pointer:coarse)').matches&
 class Desktop {
   constructor(parent, config, label, state) {
     this.baseConfig = {...config};this.config={...config}; this.windows = state?.windows || initialWindows(); this.current=state?.current || 0;this.active=state?.active ?? null;
-    this.workspacePins=new Map();this.pins=state?.pins || []; this.menuPath=[]; this.menu=state?.menu || null; this.nextId=Math.max(10,...this.windows.map(w=>w.id))+1;
+    this.workspacePins=new Map();this.pins=state?.pins ?? ['files','terminal']; this.menuPath=[]; this.menu=state?.menu || null; this.nextId=Math.max(10,...this.windows.map(w=>w.id))+1;
     this.root=make('div','desktop');this.root.dataset.screen=label;
     this.spacer=make('div','screen-spacer');this.spacer.append(this.root);
     this.viewport=make('div','viewport');this.viewport.append(this.spacer);parent.append(this.viewport);
@@ -154,7 +154,7 @@ class Desktop {
   layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
   saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:w.x,y:w.y,w:w.w,h:w.h,minimized:!!w.minimized,rolled:!!w.rolled,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));}catch(error){console.warn('Could not save window layout:',error.message);}}
   restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['terminal','files','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
-  get pins(){return (this.workspacePins.get(this.current)||[]).filter(availableApplication);}
+  get pins(){return (this.workspacePins.get(this.current)??['files','terminal']).filter(availableApplication);}
   set pins(value){const other=(this.workspacePins.get(this.current)||[]).filter(app=>!availableApplication(app));this.workspacePins.set(this.current,[...new Set([...other,...value])]);}
   scale() {
     const width=this.viewport.clientWidth,height=this.viewport.clientHeight;
@@ -210,10 +210,6 @@ class Desktop {
     if(this.windows.some(w=>w.id===this.active&&!accountWindow(w)))this.active=visible.at(-1)?.id??null;
     if(this.mobile&&!visible.some(w=>w.id===this.active))this.active=visible.at(-1)?.id??null;
     this.renderPanel();
-    [['disk','Home',54]].forEach(([key,name,y])=>{
-      const b=button(name,()=>{const w=this.launch('files',name);w.path=key==='trash'?'/Trash':'/';this.render();},'desktop-icon');
-      b.style.top=(c.panelHeight+y-34)+'px';b.append(icon(key),make('span','',name));this.root.append(b);
-    });
     for(const w of this.windows){
       if(!accountWindow(w))continue;
       let win=this.root.querySelector('[data-window="'+w.id+'"]');
