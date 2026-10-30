@@ -189,14 +189,14 @@ class Desktop {
     if(this.windows.some(w=>w.id===this.active&&!accountWindow(w)))this.active=visible.at(-1)?.id??null;
     if(this.mobile&&!visible.some(w=>w.id===this.active))this.active=visible.at(-1)?.id??null;
     this.renderPanel();
-    [['disk','Home',54],['trash','Trash',170]].forEach(([key,name,y])=>{
+    [['disk','Home',54]].forEach(([key,name,y])=>{
       const b=button(name,()=>{const w=this.launch('files',name);w.path=key==='trash'?'/Trash':'/';this.render();},'desktop-icon');
       b.style.top=(c.panelHeight+y-34)+'px';b.append(icon(key),make('span','',name));this.root.append(b);
     });
     for(const w of this.windows){
       if(!accountWindow(w))continue;
       let win=this.root.querySelector('[data-window="'+w.id+'"]');
-      const changed=win&&(win.editorState!==w.editor||(w.app==='files'&&(win.fileGateway!==fileGateway||win.fileStorage!==(w.storage||'guest')||win.fileOwner!==signedInSubject()||((!w.storage||w.storage==='guest')&&win.querySelector('[aria-label="Guest folder"]')?.value!=='/home/guest'+(w.path==='/'?'':w.path)))));
+      const changed=win&&(win.editorState!==w.editor||(w.app==='files'&&(win.fileGateway!==fileGateway||win.fileOwner!==signedInSubject())));
       if(changed){disposePublicAppView(win,'View replaced');win.remove();win=null;}
       if(!win){this.renderWindow(w);win=this.root.querySelector('[data-window="'+w.id+'"]');win.editorState=w.editor;win.fileGateway=fileGateway;win.fileStorage=w.storage||'guest';win.fileOwner=signedInSubject();}
       win.hidden=w.workspace!==this.current||!!w.minimized;
