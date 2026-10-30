@@ -2,8 +2,9 @@
 (async()=>{
   const controller=navigator.serviceWorker?.controller;
   if(controller&&new URL(controller.scriptURL).pathname.endsWith('/assets/desktop/offline-worker.js')){
-    const current=await new Promise(resolve=>{const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();resolve(false);},1000);channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data?.protocol==='codi-simplified-cache/1');};controller.postMessage({type:'codi-cache-version'},[channel.port2]);});
-    if(!current){
+    const current=await new Promise(resolve=>{const channel=new MessageChannel(),timer=setTimeout(()=>{channel.port1.close();resolve(null);},1000);channel.port1.onmessage=e=>{clearTimeout(timer);channel.port1.close();resolve(e.data);};controller.postMessage({type:'codi-cache-version'},[channel.port2]);});
+    let release=null;try{const response=await fetch('assets/desktop/cache-manifest.json',{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(4000)});if(response.ok){const data=await response.json();if(/^[0-9a-f]{64}$/.test(data.id))release=data.id;}}catch{}
+    if(current?.protocol!=='codi-simplified-cache/1'||(release&&current.release!==release)){
       const base=new URL('.',document.baseURI),registration=await navigator.serviceWorker.getRegistration(base.pathname);
       if(registration?.scope===base.href)await registration.unregister();
       for(const name of await caches.keys())if(name.startsWith('codi-public-v1|'+base.pathname+'|'))await caches.delete(name);
