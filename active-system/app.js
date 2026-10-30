@@ -89,6 +89,7 @@ function icon(key, direct = false) {
     'prototype-dashboard':'<rect x="2" y="3" width="20" height="18" rx="2" fill="#e8ddf5"/><path d="M2 8h20M10 8v13M10 14h12"/>',
     'kiri-moto':'<path d="M5 6h14v12H5zM7 3h10M8 18v3m8-3v3"/><path d="M9 11h6M12 8v6"/>',
     'mesh-tool':'<path d="M12 2 21 7v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/>',
+    'notebook':'<path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/>',
     'diagrams-net':'<path d="M3 4h6v5H3zM15 15h6v5h-6zM6 9v4h12v2"/>',
     'replicad':'<path d="M12 2 21 7v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/>',
     'excalidraw':'<path d="M4 17 16 5l3 3L7 20H4z"/>',
@@ -116,11 +117,11 @@ function button(label, handler, cls = '') {
 function textButton(label, handler, cls = '') { const n=button(label,handler,cls);n.textContent=label;return n; }
 const desktopMenu=[
   {name:'Office',icon:'document-editor',children:[{name:'Text Editor',icon:'text'},{name:'Document Editor',icon:'document-editor'},{name:'Spreadsheet',icon:'spreadsheet'},{name:'Data Explorer (Perspective)',icon:'spreadsheet'},{name:'PDF Viewer',icon:'pdf-viewer'}]},
-  {name:'Diagramming',icon:'image-editor',children:[{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
+  {name:'Programming',icon:'notebook',children:[{name:'Python Notebook — Browser',icon:'notebook'},{name:'Python Notebook — Linux (in development)',icon:'notebook',disabled:true}]},
+  {name:'Diagramming',icon:'image-editor',children:[{name:'Image Editor',icon:'image-editor'},{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
   {name:'3D Printing',icon:'help',children:[{name:'Kiri:Moto',icon:'kiri-moto'},{name:'Mesh:Tool',icon:'mesh-tool'},{name:'G-code Preview',icon:'gcode-preview'},{name:'Replicad',icon:'replicad'}]},
   {name:'Audio Tools',icon:'help',children:[{name:'Audio Editor',icon:'help'}]},
-  {name:'Image Editor',icon:'image-editor'}, {name:'Calculator',icon:'calculator'},
-  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{separator:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
+  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{separator:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
   {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:reference.icons.applications}
 ];
 function initialWindows(){return [];}
@@ -141,8 +142,8 @@ class Desktop {
   }
   dispose(){this.observer.disconnect();}
   layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
-  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)).slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.excalidraw||w.svgEditor||w.diagramsNet;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:w.x,y:w.y,w:w.w,h:w.h,minimized:!!w.minimized,rolled:!!w.rolled,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));}catch(error){console.warn('Could not save window layout:',error.message);}}
-  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['terminal','files','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
+  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:w.x,y:w.y,w:w.w,h:w.h,minimized:!!w.minimized,rolled:!!w.rolled,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));}catch(error){console.warn('Could not save window layout:',error.message);}}
+  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['terminal','files','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
   get pins(){return (this.workspacePins.get(this.current)||[]).filter(availableApplication);}
   set pins(value){const other=(this.workspacePins.get(this.current)||[]).filter(app=>!availableApplication(app));this.workspacePins.set(this.current,[...new Set([...other,...value])]);}
   scale() {
@@ -297,7 +298,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app={'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -307,12 +308,12 @@ class Desktop {
     w.minimized=false;this.current=w.workspace;this.active=w.id;this.workspaceFocus.set(w.workspace,w.id);this.closePopups();this.render();
   }
   open(app,context){
-    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor','gcode-preview','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||context.storage!=='mirror'||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
+    if(!['text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor','gcode-preview','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook'].includes(app)||!context||Object.keys(context).sort().join(',')!=='owner,path,storage,version'||context.version!==1||(context.storage!=='mirror'&&!(context.storage==='guest'&&app==='text'))||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
     if(!signedInSubject()||context.owner!==signedInSubject())throw Error('Sign in to open this private document');
     const launchContext=Object.freeze({version:1,storage:context.storage,path:context.path,owner:context.owner});
     const found=this.windows.find(w=>w.app===app&&w.ownerSub===context.owner&&(w.spreadsheet?.path||w.documentEditor?.path||w.editor?.path||w.launchContext?.path)===context.path);
     if(found){this.activateWindow(found);return found;}
-    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':app==='data-explorer'?'Data Explorer':app==='audio-editor'?'Audio Editor':app==='gcode-preview'?'G-code Preview':app==='mesh-tool'?'Mesh:Tool':app==='excalidraw'?'Excalidraw':app==='svg-editor'?'SVG-edit':app==='diagrams-net'?'diagrams.net':'Image Editor';
+    const title=app==='text'?'Text Editor':app==='document-editor'?'Document Editor':app==='pdf-viewer'?'PDF Viewer':app==='spreadsheet'?'Spreadsheet':app==='data-explorer'?'Data Explorer':app==='audio-editor'?'Audio Editor':app==='gcode-preview'?'G-code Preview':app==='mesh-tool'?'Mesh:Tool':app==='excalidraw'?'Excalidraw':app==='svg-editor'?'SVG-edit':app==='diagrams-net'?'diagrams.net':app==='notebook'?'Python Notebook':'Image Editor';
     const w=this.launch(app,context.path.split('/').pop()+' — '+title);
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
@@ -324,7 +325,7 @@ class Desktop {
   launch(app,title) {
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
+    const names={terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',notebook:'Python Notebook',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:820,h:540};
     if(personal)w.ownerSub=personal.ownerSub;
@@ -333,7 +334,7 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
@@ -433,7 +434,7 @@ class Desktop {
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
       ['Minimize','M4 19 H20',()=>{w.minimized=true;this.active=null;}],
       ['Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:this.config.panelHeight,w:resolution[0],h:resolution[1]-this.config.panelHeight});}}],
-      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty||w.audioEditor?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
+      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty||w.audioEditor?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty||w.notebook?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
     ];
     actions.forEach(([name,path,action])=>{
       const b=button(name,()=>{action();if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();});b.title=name;
@@ -647,13 +648,14 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const next=await accountSession(mode,username,password);
     if(!stillWanted()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});return;}
     const previous=currentSession;
+    if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){stopGuestAccountMount();++bootEpoch;await v86Instance.stop();v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     for(const surface of surfaces.values())surface.saveLayout();
     currentSession=sessionViews(next);
     startMirror();
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(previous)identityModule.logoutSession(identityConfig,previous).catch(()=>{});
-    if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
+    if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});else await startGuest();
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
   }finally{accountTransition=false;}
 }
@@ -678,15 +680,16 @@ async function maintainIdentity(){
 }
 let bootEpoch=0;
 let bootFailed=false;
-function failGuest(message){bootFailed=true;guestState='error';guestMessage=String(message);guestFiles.ready=false;appendSerial('\r\nGuest error: '+guestMessage+'\r\n');if(serialFrame)cancelAnimationFrame(serialFrame);flushSerial();feedback(guestMessage);refreshTerminals();}
+function failGuest(message){stopGuestAccountMount();bootFailed=true;guestState='error';guestMessage=String(message);guestFiles.ready=false;appendSerial('\r\nGuest error: '+guestMessage+'\r\n');if(serialFrame)cancelAnimationFrame(serialFrame);flushSerial();feedback(guestMessage);refreshTerminals();}
 async function startGuest(){
+  stopGuestAccountMount();guestFiles.ready=false;
   const epoch=++bootEpoch;
   try{
     guestState='starting';guestMessage='Loading local Linux kernel and initramfs…';refreshTerminals();
     const imageResponse=await fetch('assets/terminal/v2/image.json',{cache:'no-store'});
     if(!imageResponse.ok)throw Error('The terminal guest image manifest is unavailable.');
     const image=await imageResponse.json();
-    if(image.version!=='codi-terminal-image/2'||!Number.isSafeInteger(image.bytes)||image.bytes<1||image.bytes>16777216||!/^[0-9a-f]{64}$/.test(image.sha256)||image.path!=='assets/terminal/v2/'+image.sha256+'.cpio.gz')throw Error('Invalid terminal guest image metadata.');
+    if(image.version!=='codi-terminal-image/2'||!Number.isSafeInteger(image.bytes)||image.bytes<1||image.bytes>67108864||!/^[0-9a-f]{64}$/.test(image.sha256)||image.path!=='assets/terminal/v2/'+image.sha256+'.cpio.gz')throw Error('Invalid terminal guest image metadata.');
     await Promise.all(['.build/v86/v86.wasm','.build/v86/seabios.bin','.build/v86/vgabios.bin','.build/v86/vmlinuz',image.path].map(async name=>{let response;try{response=await fetch(name,{method:'HEAD'});}catch(_){throw Error('Could not fetch guest asset '+name+'. Check the static server and assets.');}if(!response.ok)throw Error('Missing guest asset '+name+' (HTTP '+response.status+'). Run scripts/prepare-v86-assets.sh.');}));
     if(epoch!==bootEpoch)return;
     const relayPath=identityConfig.guestNetwork?.relayPath;
@@ -711,11 +714,12 @@ async function startGuest(){
     emulator.add_listener('download-error',event=>{if(epoch===bootEpoch)failGuest('Could not load '+event.file_name+'. Check that the static server is running.');});
     setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
     emulator.add_listener('serial0-output-byte',byte=>{if(epoch!==bootEpoch)return;receiveGuestSerial(String.fromCharCode(byte));});
-    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and shared home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(()=>emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})))).catch(error=>{failGuest('Shared files: '+error.message);});refreshTerminals();});
+    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and shared home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})));await startGuestAccountMount();}).catch(error=>{failGuest('Shared files: '+error.message);});refreshTerminals();});
     emulator.start(options);
   }catch(error){if(epoch!==bootEpoch)return;guestNetworkAdapter?.destroy();guestNetworkAdapter=null;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}failGuest(error.message||String(error));}
 }
 async function endSession(){
+  stopGuestAccountMount();
   for(const desktop of surfaces.values())desktop.saveLayout();
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
