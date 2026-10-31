@@ -195,10 +195,11 @@ class Desktop {
   closePopups(){this.menu=null;this.menuPath=[];this.root.querySelectorAll('.popup,.popup-backdrop').forEach(n=>n.remove());}
   popupBackdrop(){if(this.mobile&&!this.root.querySelector('.popup-backdrop'))this.root.append(button('Close menu',()=>this.closePopups(),'popup-backdrop'));}
   render() {
-    this.updateLayout();const c=this.config;
+    const wasMobile=this.mobile;this.updateLayout();const c=this.config;
+    const keepMenu=!!this.menu&&wasMobile===this.mobile&&!!this.root.querySelector('.menu-pane');
     const fileGateway=typeof serverFilesAvailable==='function'&&serverFilesAvailable();
     // Keep app DOM, drafts and cursor positions while rebuilding desktop chrome.
-    for(const child of [...this.root.children])if(!child.matches('.window'))child.remove();
+    for(const child of [...this.root.children])if(!child.matches('.window')&&!(keepMenu&&child.matches('.menu-pane,.popup-backdrop')))child.remove();
     for(const win of this.root.querySelectorAll('.window'))if(!this.windows.some(w=>w.id===Number(win.dataset.window)&&accountWindow(w))){disposePublicAppView(win);win.remove();}
     this.root.classList.toggle('hitboxes',hitboxes);
     this.root.classList.toggle('panel-labels-bold',c.panelLabelsBold);
@@ -227,7 +228,7 @@ class Desktop {
       roll.querySelector('path').setAttribute('d',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16');
     }
     this.scale();
-    if(this.menu)this.showMenu(this.applicationItems(),0,0,c.panelHeight);
+    if(this.menu&&!keepMenu)this.showMenu(this.applicationItems(),0,0,c.panelHeight);
     this.saveLayout();
   }
   applicationItems(){
