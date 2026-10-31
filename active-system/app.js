@@ -131,9 +131,9 @@ function button(label, handler, cls = '') {
 }
 function textButton(label, handler, cls = '') { const n=button(label,handler,cls);n.textContent=label;return n; }
 const desktopMenu=[
-  {name:'Browser',icon:'browser'},
+  {name:'Browser (in development)',icon:'browser',disabled:true,disabledTitle:'In development'},
   {name:'Office',icon:'document-editor',children:[{name:'Text Editor',icon:'text'},{name:'Document Editor',icon:'document-editor'},{name:'Spreadsheet',icon:'spreadsheet'},{name:'Data Explorer (Perspective)',icon:'spreadsheet'},{name:'PDF Viewer',icon:'pdf-viewer'}]},
-  {name:'Programming',icon:'notebook',children:[{name:'Python Notebook — Browser',icon:'notebook'},{name:'Python Notebook — Linux (in development)',icon:'notebook',disabled:true}]},
+  {name:'Programming',icon:'notebook',children:[{name:'Python Notebook — Browser',icon:'notebook'},{name:'Python Notebook — Linux (in development)',icon:'notebook',disabled:true,disabledTitle:'In development'}]},
   {name:'Electronics',icon:'help',children:[{name:'Arduino Simulator',icon:'help'},{name:'Pico Simulator',icon:'help'},{name:'Circuit Simulator',icon:'help'},{name:'Electronics Design',icon:'help'},{name:'Digital Logic',icon:'help'}]},
   {name:'Crafts',icon:'image-editor',children:[{name:'Embroidery Studio',icon:'image-editor'},{name:'Stitch Converter',icon:'image-editor'}]},
   {name:'Diagramming',icon:'image-editor',children:[{name:'Image Editor',icon:'image-editor'},{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
@@ -289,7 +289,7 @@ class Desktop {
     if(this.mobile&&depth>0){const back=textButton('‹ Back',()=>this.showMenu(this.menuLevels[depth-1],depth-1,8,this.config.panelHeight),'menu-row');pane.append(back);}
     for(const entry of items) {
       if(entry.separator){pane.append(make('div','menu-separator'));continue;}
-      const row=button(entry.name,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title='Background tool available to applications';}
+      const row=button(entry.name,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title=entry.disabledTitle||'Background tool available to applications';}
       row.append(icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',entry.name));
       const open=()=>{
         pane.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));row.classList.add('selected');
@@ -316,7 +316,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Falling Blocks (preview)':'falling-blocks','Browser':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app={'Falling Blocks (preview)':'falling-blocks','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -353,7 +353,7 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Falling Blocks (preview)':'falling-blocks','Browser':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Falling Blocks (preview)':'falling-blocks','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
