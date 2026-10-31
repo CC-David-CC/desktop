@@ -451,7 +451,7 @@ class Desktop {
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
       ['Minimize','M4 19 H20',()=>{w.minimized=true;this.active=null;}],
       ['Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:this.config.panelHeight,w:resolution[0],h:resolution[1]-this.config.panelHeight});}}],
-      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty||w.audioEditor?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty||w.notebook?.dirty||w.browserDownloadState?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
+      ['Close','M5 5 L19 19 M19 5 L5 19',()=>{if((w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.spreadsheet?.dirty||w.audioEditor?.dirty||w.fallingBlocks?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty||w.notebook?.dirty||w.browserDownloadState?.dirty)&&!confirm('Discard unsaved changes to '+w.title+'?'))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);this.active=null;}]
     ];
     actions.forEach(([name,path,action])=>{
       const b=button(name,()=>{action();if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();});b.title=name;
