@@ -34,6 +34,7 @@ let deviceCacheModule = import('./assets/desktop/device-cache.mjs');
 deviceCacheModule.then(module=>module.registerDeviceCache()).catch(error=>console.warn('Device app cache unavailable:',error.message));
 let feedbackTimer = null;
 let onScreenKeyboardEnabled = false;
+let voiceControl = null;
 const originalInputModes = new WeakMap();
 function applyScreenKeyboardPolicy(root=document){
   const fields=[...(root.matches?.('input,textarea,[contenteditable]')?[root]:[]),...root.querySelectorAll('input,textarea,[contenteditable]')];
@@ -94,6 +95,8 @@ function feedback(text) {
 function icon(key, direct = false) {
   if(isAccountApp(key))key='prototype-'+key.split(':').at(-1);
   const drawings={
+    microphone:'<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>',
+    keyboard:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M5 9h2m2 0h2m2 0h2m2 0h2M5 12h2m2 0h2m2 0h2m2 0h2M7 15h10"/>',
     browser:'<circle cx="12" cy="12" r="9" fill="#d9edf8"/><path d="M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18"/>',
     'prototype-canvas':'<rect x="3" y="3" width="18" height="18" rx="3" fill="#d5eeec"/><path d="M7 12h10M12 7v10"/>',
     'prototype-notes':'<path fill="#fff0ce" d="M5 2h13l3 4v16H5z"/><path d="M9 7h7M9 11h8M9 15h6M9 19h5"/>',
@@ -135,7 +138,7 @@ const desktopMenu=[
   {name:'Diagramming',icon:'image-editor',children:[{name:'Image Editor',icon:'image-editor'},{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
   {name:'3D Printing',icon:'help',children:[{name:'Kiri:Moto',icon:'kiri-moto'},{name:'Mesh:Tool',icon:'mesh-tool'},{name:'G-code Preview',icon:'gcode-preview'},{name:'Replicad',icon:'replicad'}]},
   {name:'Audio Tools',icon:'help',children:[{name:'Audio Editor',icon:'help'}]},
-  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{separator:true},{name:'CodeMirror 6',icon:'help',disabled:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
+  {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{name:'Voice input',icon:'microphone',action:()=>voiceControl?.toggle()},{name:'Keyboard lock',icon:'keyboard',action:()=>{setScreenKeyboardEnabled(!onScreenKeyboardEnabled);feedback(onScreenKeyboardEnabled?'On-screen keyboard enabled':'On-screen keyboard locked');}},{separator:true},{name:'CodeMirror 6',icon:'help',disabled:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true}]},
   {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:reference.icons.applications}
 ];
 function initialWindows(){return [];}
@@ -492,18 +495,15 @@ function initializeVoiceControl(){
   const microphone='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>';
   const stopIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>';
   const mic=button('Start voice input',null,'voice-button');mic.title='Tap to start voice input';mic.innerHTML=microphone;
-  const keyboard=button('Show on-screen keyboard',null,'keyboard-toggle');keyboard.textContent='⌨';
-  dock.append(note,keyboard,mic);document.body.append(dock);
+  dock.hidden=!compactDesktop(innerWidth);
+  dock.append(note,mic);document.body.append(dock);
   let lastInput=null,activeJob=null,phase='',speech,busy=false,noticeTimer;
   const editable=el=>el instanceof HTMLElement&&!el.disabled&&!el.readOnly&&(el.matches('textarea,input:not([type]),input[type=text],input[type=search],input[type=url],input[type=email],input[type=tel]')||el.isContentEditable);
   document.addEventListener('focusin',e=>{if(editable(e.target)||e.target.matches?.('[data-serial-view]')){lastInput=e.target;applyScreenKeyboardPolicy(e.target);}});
   document.addEventListener('pointerdown',e=>{const field=e.target.closest?.('input,textarea,[contenteditable]');if(field)applyScreenKeyboardPolicy(field);},true);
   const inputObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof HTMLElement)applyScreenKeyboardPolicy(node);});
   inputObserver.observe(document.querySelector('#previews'),{childList:true,subtree:true});
-  const keyboardState=()=>{keyboard.setAttribute('aria-pressed',String(onScreenKeyboardEnabled));keyboard.setAttribute('aria-label',onScreenKeyboardEnabled?'Hide on-screen keyboard':'Show on-screen keyboard');keyboard.title=onScreenKeyboardEnabled?'Keyboard on · tap to hide':'Voice mode · tap to show keyboard';dock.dataset.keyboard=onScreenKeyboardEnabled?'on':'off';};
-  document.addEventListener('codi-keyboard-mode',keyboardState);setScreenKeyboardEnabled(false);keyboardState();
-  keyboard.addEventListener('pointerdown',e=>e.preventDefault());
-  keyboard.addEventListener('click',()=>{const target=destination()?.element;const enabled=!onScreenKeyboardEnabled;setScreenKeyboardEnabled(enabled);if(enabled&&target?.matches('input,textarea,[contenteditable]')){target.blur();target.focus({preventScroll:true});}message(enabled?'Keyboard on':'Voice mode · keyboard off');});
+  setScreenKeyboardEnabled(!compactDesktop(innerWidth));
   const message=text=>{clearTimeout(noticeTimer);note.textContent=text;note.hidden=!text;position();if(text&&!busy)noticeTimer=setTimeout(()=>{note.hidden=true;},4000);};
   const status=text=>{
     phase=text;busy=/Loading|Opening|Listening|Transcribing/.test(text);
@@ -564,6 +564,7 @@ function initializeVoiceControl(){
   mic.addEventListener('contextmenu',e=>e.preventDefault());
   document.addEventListener('visibilitychange',()=>{if(document.hidden){speech?.cancelVoice();activeJob=null;}});
   document.addEventListener('codi-desktop-blocked',()=>{speech?.cancelVoice();activeJob=null;});
+  voiceControl={toggle(){dock.hidden=!dock.hidden;if(dock.hidden){speech?.cancelVoice();activeJob=null;}else position();}};
   visualViewport?.addEventListener('resize',position);visualViewport?.addEventListener('scroll',position);window.addEventListener('resize',position);position();
 }
 function refreshTerminals(){for(const desktop of surfaces.values())desktop.render();updateScaleNote();}

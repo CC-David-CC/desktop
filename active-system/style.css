@@ -89,6 +89,7 @@ html,body,#previews{width:100%;height:100%;margin:0;overflow:hidden}
 .compact-desktop .app-status{font-size:12px;overflow-wrap:anywhere}
 .compact-desktop .chat-content{padding:6px}
 .voice-control{position:fixed;z-index:900;display:flex;align-items:center;gap:8px;width:max-content;max-width:calc(100vw - 16px);background:transparent}
+.voice-control[hidden]{display:none}
 .voice-button{width:48px;height:48px;min-width:48px;border:1px solid #74787b;border-radius:50%;background:#303638;color:white;box-shadow:0 2px 8px #0005;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer}
 .voice-button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
 .voice-note{max-width:260px;background:#20282af2;color:white;border-radius:6px;padding:7px 10px;font:12px/1.4 DesktopSans,sans-serif;pointer-events:none;overflow-wrap:anywhere}
