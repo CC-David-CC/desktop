@@ -127,7 +127,7 @@ function button(label, handler, cls = '') {
 }
 function textButton(label, handler, cls = '') { const n=button(label,handler,cls);n.textContent=label;return n; }
 const desktopMenu=[
-  {name:'Browser (offline preview)',icon:'browser'},
+  {name:'Browser',icon:'browser'},
   {name:'Office',icon:'document-editor',children:[{name:'Text Editor',icon:'text'},{name:'Document Editor',icon:'document-editor'},{name:'Spreadsheet',icon:'spreadsheet'},{name:'Data Explorer (Perspective)',icon:'spreadsheet'},{name:'PDF Viewer',icon:'pdf-viewer'}]},
   {name:'Programming',icon:'notebook',children:[{name:'Python Notebook — Browser',icon:'notebook'},{name:'Python Notebook — Linux (in development)',icon:'notebook',disabled:true}]},
   {name:'Diagramming',icon:'image-editor',children:[{name:'Image Editor',icon:'image-editor'},{name:'diagrams.net',icon:'diagrams-net'},{name:'Excalidraw',icon:'image-editor'},{name:'SVG-edit',icon:'image-editor'}]},
@@ -306,7 +306,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Browser (offline preview)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app={'Browser':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
     if(!app)return;
     this.launch(app);
   }
@@ -333,7 +333,7 @@ class Desktop {
   launch(app,title) {
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={browser:'Browser (offline preview)',terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',notebook:'Python Notebook',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
+    const names={browser:'Browser',terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',notebook:'Python Notebook',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:this.config.panelHeight+80+offset,w:820,h:540};
     if(personal)w.ownerSub=personal.ownerSub;
@@ -342,7 +342,7 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.config.panelHeight+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Browser (offline preview)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Browser':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
       const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
