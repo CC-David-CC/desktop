@@ -109,9 +109,28 @@ async function pickMirrorFile({extensions=[],signal,foldersOnly=false}={}){
  if(!Array.isArray(extensions)||extensions.some(x=>typeof x!=='string'||!(x.length<=32&&/^\.[a-z0-9]+(?:[-.][a-z0-9]+)*$/i.test(x))))throw Error('Invalid file filter.');
  if(signal?.aborted)return null;const context=await mirrorFileContext();if(signal?.aborted||!context.valid())return null;
  const dialog=document.createElement('dialog');dialog.className='codi-file-picker';dialog.setAttribute('aria-label',foldersOnly?'Choose folder in My files':'Choose from My files');
- const heading=make('h2','',foldersOnly?'Choose a folder':'Choose from My files'),location=make('div','codi-picker-location'),list=make('div','codi-picker-list'),status=make('div','app-status'),bar=make('div','codi-picker-bar');let dir='/',closed=false,revision=0,finish,unsubscribe=()=>{};
- const cancel=textButton('Cancel',()=>finish(null)),up=textButton('Up',()=>{if(dir!=='/'){dir=dir.slice(0,dir.lastIndexOf('/'))||'/';refresh();}});const chooseFolder=textButton('Use this folder',()=>finish(context.valid()?dir:null));chooseFolder.disabled=true;if(foldersOnly)bar.append(up,chooseFolder,cancel);else bar.append(up,cancel);dialog.append(heading,location,list,status,bar);document.body.append(dialog);
- async function refresh(){const n=++revision;location.textContent='My files: '+dir;up.disabled=dir==='/';list.replaceChildren();chooseFolder.disabled=true;status.textContent='Loading…';try{const data=await context.files.list(dir);if(closed||n!==revision||!context.valid())return;chooseFolder.disabled=false;const rows=data.entries.filter(x=>!x.deleted&&(!foldersOnly||x.directory));for(const row of rows){const matches=row.directory||!extensions.length||extensions.some(ext=>row.name.toLowerCase().endsWith(ext.toLowerCase()));const b=textButton((row.directory?'📁 ':'')+row.name,()=>{if(row.directory){dir=row.path;refresh();}else finish(row.path);});b.disabled=!matches||row.status==='conflict';b.setAttribute('aria-label',(row.directory?'Open folder ':'Choose file ')+row.name);list.append(b);}status.textContent=rows.length?(foldersOnly?'Open a folder or use this one.':'Select a file.'):(foldersOnly?'No folders here. You can use this folder.':'This folder is empty.');}catch(error){if(!closed&&n===revision)status.textContent=error.message;}}
+ const heading=make('h2','',foldersOnly?'Choose a folder':'Choose from My files'),location=make('div','codi-picker-location'),list=make('div','codi-picker-list'),status=make('div','app-status'),bar=make('div','codi-picker-bar');let dir='/',closed=false,revision=0,finish,unsubscribe=()=>{},rendered='';
+ const cancel=textButton('Cancel',()=>finish(null)),up=textButton('Up',()=>{if(dir!=='/'){dir=dir.slice(0,dir.lastIndexOf('/'))||'/';rendered='';list.replaceChildren();refresh();}});const chooseFolder=textButton('Use this folder',()=>finish(context.valid()?dir:null));chooseFolder.disabled=true;if(foldersOnly)bar.append(up,chooseFolder,cancel);else bar.append(up,cancel);dialog.append(heading,location,list,status,bar);document.body.append(dialog);
+ async function refresh(){
+  const n=++revision,requested=dir;location.textContent='My files: '+requested;up.disabled=requested==='/';
+  if(!rendered){chooseFolder.disabled=true;status.textContent='Loading…';}
+  try{
+   const data=await context.files.list(requested);if(closed||n!==revision||!context.valid())return;
+   const rows=data.entries.filter(x=>!x.deleted&&(!foldersOnly||x.directory));
+   const signature=JSON.stringify([requested,rows.map(x=>[x.name,x.path,x.directory,x.status==='conflict'])]);chooseFolder.disabled=false;
+   if(signature!==rendered){
+    const focused=list.contains(document.activeElement)?document.activeElement.getAttribute('data-picker-path'):null;
+    list.replaceChildren();
+    for(const row of rows){
+     const matches=row.directory||!extensions.length||extensions.some(ext=>row.name.toLowerCase().endsWith(ext.toLowerCase()));
+     const b=textButton((row.directory?'📁 ':'')+row.name,()=>{if(row.directory){dir=row.path;rendered='';list.replaceChildren();refresh();}else finish(row.path);});
+     b.disabled=!matches||row.status==='conflict';b.setAttribute('aria-label',(row.directory?'Open folder ':'Choose file ')+row.name);b.setAttribute('data-picker-path',row.path);list.append(b);
+    }
+    rendered=signature;if(focused){const target=[...list.children].find(x=>x.getAttribute('data-picker-path')===focused&&!x.disabled);target?.focus();}
+   }
+   status.textContent=rows.length?(foldersOnly?'Open a folder or use this one.':'Select a file.'):(foldersOnly?'No folders here. You can use this folder.':'This folder is empty.');
+  }catch(error){if(!closed&&n===revision){list.replaceChildren();rendered='';chooseFolder.disabled=true;status.textContent=error.message;}}
+ }
  return new Promise(resolve=>{finish=value=>{if(closed)return;closed=true;revision++;unsubscribe();signal?.removeEventListener('abort',aborted);if(dialog.open)dialog.close();dialog.remove();resolve(value);};const aborted=()=>finish(null);signal?.addEventListener('abort',aborted,{once:true});dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});if(signal?.aborted){finish(null);return;}dialog.showModal();unsubscribe=context.files.subscribe(()=>{if(!closed)refresh();});refresh();});
 }
 async function pickMirrorFolder({signal}={}){return pickMirrorFile({signal,foldersOnly:true});}
