@@ -632,12 +632,24 @@ async function initializeSession(){
   refreshTerminals();
   if(identityConfig.guestNetwork){const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error'});if(!cookie.ok)throw Error('Linux network connection could not be initialized.');}
   await startGuest();
-  if(identityConfig.desktopLifecycle){
-    bootRecovery?.stop();bootRecovery=null;
-    const {startLifecycle}=await import('./assets/desktop/lifecycle.mjs');
-    // Guest Internet can reconnect independently; it must not lock the desktop
-    // when the account and file services are still available.
-    desktopLifecycle=startLifecycle({config:identityConfig,roots:()=>[document.querySelector('#previews'),document.querySelector('#voice-control')],recoverSession:recoverDesktopSession});
+  if(identityConfig.desktopLifecycle)void startSessionLifecycle(session,identityConfig);
+}
+async function startSessionLifecycle(session,config){
+  // A temporary asset failure after successful sign-in must not discard the
+  // authenticated session or make the user enter their password again.
+  for(let attempt=0;currentSession===session;attempt++){
+    try{
+      const suffix=attempt?'?retry='+attempt:'';
+      const {startLifecycle}=await import('./assets/desktop/lifecycle.mjs'+suffix);
+      if(currentSession!==session)return;
+      bootRecovery?.stop();bootRecovery=null;
+      desktopLifecycle=startLifecycle({config,roots:()=>[document.querySelector('#previews'),document.querySelector('#voice-control')],recoverSession:recoverDesktopSession});
+      return;
+    }catch(error){
+      if(currentSession!==session)return;
+      console.warn('Desktop connection monitoring is retrying:',error.message);
+      await new Promise(resolve=>setTimeout(resolve,Math.min(30000,1000*2**Math.min(attempt,5))));
+    }
   }
 }
 function sessionViews(session){
