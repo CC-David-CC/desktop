@@ -56,6 +56,23 @@ function setScreenKeyboardEnabled(enabled){
 
 
 function sessionName() { return currentSession?.public.kind==='registered'?currentSession.displayName:'Anon'; }
+const browserSourcePages=new Set();
+function closeBrowserSourcePages(){for(const page of browserSourcePages)page.stop();browserSourcePages.clear();}
+function showBrowserSources(){
+  const session=currentSession;
+  if(session?.public.kind!=='registered'||!identityConfig?.browserRelay){feedback('Sign in to view Browser licenses and source.');return;}
+  const popup=window.open('about:blank','_blank');
+  if(!popup){feedback('Allow pop-ups to open Browser licenses and source.');return;}
+  popup.opener=null;popup.document.title='Browser licenses and source';popup.document.body.textContent='Opening licenses and source…';
+  const sessionValid=()=>currentSession===session;
+  const valid=()=>sessionValid()&&!popup.closed;
+  (async()=>{try{
+    const [{startBrowserSourcePage},{openBrowserRelay}]=await Promise.all([import('./assets/desktop/browser-source-launcher.mjs'),import('./assets/desktop/browser-relay-client.mjs')]);
+    if(!valid()){popup.close();return;}
+    let page;page=startBrowserSourcePage({popup,origin:location.origin,valid,notify:feedback,onStop:()=>browserSourcePages.delete(page),connect:options=>openBrowserRelay(identityConfig,session,{...options,valid:sessionValid})});
+    browserSourcePages.add(page);await page.ready;if(!valid()){page.stop();browserSourcePages.delete(page);}
+  }catch(error){popup.close();feedback('Could not open licenses and source: '+error.message);}})();
+}
 function compactDate(now){const two=n=>String(n).padStart(2,'0');return two(now.getMonth()+1)+'/'+two(now.getDate())+'/'+two(now.getFullYear()%100);}
 function refreshDesktopClocks(){
   const now=new Date(),date=compactDate(now),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
@@ -487,7 +504,7 @@ class Desktop {
     }
     else {
       popup.append(make('div','status-line',currentSession?`${currentSession.trust.label} · ${currentSession.id}`:'Starting anonymous session…'));
-      if(currentSession?.public.kind==='registered')popup.append(textButton('Sign out',async()=>{if(accountTransition)return;try{await endSession();}catch(error){feedback(error.message);}}));
+      if(currentSession?.public.kind==='registered'){popup.append(textButton('Sign out',async()=>{if(accountTransition)return;try{await endSession();}catch(error){feedback(error.message);}}));if(identityConfig?.browserRelay)popup.append(textButton('Browser licenses & source',showBrowserSources));}
       else if(identityConfig?.identity.mode==='server'&&identityConfig.accounts?.actions?.includes('signin')){
         const actions=make('div','account-actions');
         for(const [mode,label] of [['register','Register'],['signin','Sign in']]){const b=textButton(label,()=>this.showAccountForm(mode,anchor));b.dataset.accountAction=mode;b.disabled=accountTransition;actions.append(b);}popup.append(actions);
@@ -596,7 +613,7 @@ function renderPreviews(){
 }
 renderPreviews();
 initializeVoiceControl();
-window.addEventListener('pagehide',()=>{for(const surface of surfaces.values())surface.saveLayout();});
+window.addEventListener('pagehide',()=>{closeBrowserSourcePages();for(const surface of surfaces.values())surface.saveLayout();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const surface of surfaces.values())surface.saveLayout();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const desktop of surfaces.values())desktop.closePopups();});
 function initializeVoiceControl(){
@@ -788,7 +805,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const previous=currentSession;
     if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;await v86Instance.stop();v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     for(const surface of surfaces.values())surface.saveLayout();
-    currentSession=sessionViews(next);
+    closeBrowserSourcePages();currentSession=sessionViews(next);
     startMirror();
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
@@ -858,6 +875,7 @@ async function startGuest(){
 }
 async function endSession(){
 
+  closeBrowserSourcePages();
   for(const desktop of surfaces.values())desktop.saveLayout();
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
