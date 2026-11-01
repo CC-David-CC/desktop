@@ -173,6 +173,44 @@ const desktopMenu=[
   {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{name:'Voice input',icon:'microphone',action:()=>voiceControl?.toggle()},{name:'Keyboard lock',icon:'keyboard',action:()=>{setScreenKeyboardEnabled(!onScreenKeyboardEnabled);feedback(onScreenKeyboardEnabled?'On-screen keyboard enabled':'On-screen keyboard locked');}},{separator:true},{name:'CodeMirror 6',icon:'help',disabled:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true},{name:'Trystero (WebRTC)',icon:'help',disabled:true},{name:'TanStack Virtual',icon:'help',disabled:true},{name:'ONNX Runtime Web',icon:'help',disabled:true},{name:'WebTorrent',icon:'help',disabled:true},{name:'Yjs',icon:'help',disabled:true}]},
   {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:'end-session'}
 ];
+// Presentation only: menu dispatch, persisted IDs, and app-owned titles stay unchanged.
+// Each entry lists the existing menu name, the user-facing name, and former title aliases.
+const applicationDisplayNames=Object.freeze({
+  text:['Text Editor','Text Editor (CodeMirror 6)'],
+  'document-editor':['Document Editor','Document Editor (Tiptap)'],
+  spreadsheet:['Spreadsheet','Spreadsheet (Jspreadsheet CE + SheetJS CE)'],
+  'data-explorer':['Data Explorer (Perspective)','Data Explorer (Perspective + DuckDB)','Data Explorer'],
+  'pdf-viewer':['PDF Viewer','PDF Viewer (PDF.js)'],
+  notebook:['Python Notebook — Browser','Python Notebook (JupyterLite + Pyodide)','Python Notebook'],
+  'arduino-simulator':['Arduino Simulator','Arduino Simulator (AVR8js)'],
+  'pico-simulator':['Pico Simulator','Pico Simulator (RP2040js)'],
+  circuitjs:['Circuit Simulator','Circuit Simulator (CircuitJS)'],
+  'electronics-design':['Electronics Design','Electronics Design (designElectronics)'],
+  'digital-logic':['Digital Logic','Digital Logic Simulator (DigitalJS)'],
+  'embroidery-studio':['Embroidery Studio','Embroidery Studio (StitchFoundry)'],
+  'stitch-converter':['Stitch Converter','Stitch Converter (tsembroidery)'],
+  'image-editor':['Image Editor','Image Editor (Filerobot)'],
+  'diagrams-net':['diagrams.net','Diagram Editor (diagrams.net)'],
+  excalidraw:['Excalidraw','Sketch Board (Excalidraw)'],
+  'svg-editor':['SVG-edit','Vector Editor (SVG-Edit)','SVG-Edit'],
+  'kiri-moto':['Kiri:Moto','Fabrication Studio (Kiri:Moto)'],
+  'mesh-tool':['Mesh:Tool','Mesh Editor (Mesh:Tool)'],
+  'gcode-preview':['G-code Preview','G-code Viewer (G-code Preview)'],
+  replicad:['Replicad','Primitive 3D Modeler (Replicad)'],
+  'audio-editor':['Audio Editor','Audio Editor (AudioMass)']
+});
+const applicationMenuLabels=new Map(Object.values(applicationDisplayNames).map(([menu,label])=>[menu,label]));
+// Bind labels only to the static catalog entries, never similarly named personal apps.
+const applicationMenuNames=new WeakMap();
+for(const group of desktopMenu)for(const entry of group.children||[])if(applicationMenuLabels.has(entry.name))applicationMenuNames.set(entry,applicationMenuLabels.get(entry.name));
+function applicationName(app,fallback=app){return applicationDisplayNames[app]?.[1]||fallback;}
+function displayedWindowTitle(w){
+  const entry=applicationDisplayNames[w.app];if(!entry)return w.title;
+  const [menu,label,...aliases]=entry,oldNames=[menu,label,...aliases];
+  if(oldNames.includes(w.title))return label;
+  for(const name of oldNames){const suffix=' — '+name;if(w.title.endsWith(suffix))return w.title.slice(0,-suffix.length)+' — '+label;}
+  return w.title+' — '+label;
+}
 function initialWindows(){return [];}
 const windowRect=w=>({x:w.x,y:w.y,w:w.w,h:w.h});
 const compactDesktop=width=>width<=720||(matchMedia('(pointer:coarse)').matches&&width<1024);
@@ -265,7 +303,7 @@ class Desktop {
       if(!win){this.renderWindow(w);win=this.root.querySelector('[data-window="'+w.id+'"]');win.editorState=w.editor;win.fileGateway=fileGateway;win.fileStorage=w.storage||'guest';win.fileOwner=signedInSubject();}
       win.hidden=w.workspace!==this.current||!!w.minimized;
       win.classList.toggle('focused',this.active===w.id);win.classList.toggle('rolled',!!w.rolled);
-      win.querySelector('.caption-text').textContent=w.title;
+      win.querySelector('.caption-text').textContent=displayedWindowTitle(w);win.setAttribute('aria-label',displayedWindowTitle(w));
       const roll=win.querySelector('.window-controls button');roll.setAttribute('aria-label',w.rolled?'Unroll':'Roll up');roll.title=w.rolled?'Unroll':'Roll up';
       roll.querySelector('path').setAttribute('d',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16');
     }
@@ -294,7 +332,7 @@ class Desktop {
     for(const app of appIds) {
       const windows=this.windows.filter(w=>w.app===app&&w.workspace===this.current&&accountWindow(w));
       const active=windows.some(w=>w.id===this.active&&w.workspace===this.current&&!w.minimized);
-      const label=accountApp(app)?.name||app;
+      const label=accountApp(app)?.name||applicationName(app);
       const b=button(label+' windows',e=> {
         this.closePopups();
         if(e.shiftKey||e.ctrlKey||e.metaKey||!windows.length){this.launch(app);return;}
@@ -324,9 +362,10 @@ class Desktop {
     if(this.mobile&&depth>0){const back=textButton('‹ Back',()=>this.showMenu(this.menuLevels[depth-1],depth-1,8,0),'menu-row');pane.append(back);}
     for(const entry of items) {
       if(entry.separator){pane.append(make('div','menu-separator'));continue;}
-      const row=button(entry.name,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title=entry.disabledTitle||'Background tool available to applications';}
+      const displayName=applicationMenuNames.get(entry)||entry.name;
+      const row=button(displayName,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title=entry.disabledTitle||'Background tool available to applications';}
       const arrow=make('span','arrow',entry.children?'‹':'');arrow.setAttribute('aria-hidden','true');
-      row.append(arrow,icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',entry.name));
+      row.append(arrow,icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',displayName));
       const open=()=>{
         pane.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));row.classList.add('selected');
         if(entry.children){
@@ -388,10 +427,10 @@ class Desktop {
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
     popup.style.top=this.localTop(anchor)+'px';popup.style.left=this.localLeft(anchor)+'px';
-    const name=accountApp(app)?.name||desktopMenu.find(entry=>({'Falling Blocks (preview)':'falling-blocks','Owl Companion (preview)':'owl-companion','Physics Playground (preview)':'physics-playground','Snake Garden (preview)':'snake-garden','Clockwork Room (preview)':'clockwork-room','Chess Study (preview)':'chess-study','Solitaire (preview)':'solitaire','Sky Courier (preview)':'sky-courier','Marble Works (preview)':'marble-works','Stack & Balance (preview)':'stack-balance','Crystal Defense (preview)':'crystal-defense','Drone Circuit (preview)':'drone-circuit','Reactive Control Desk (preview)':'reactive-control-desk','Story Cards (preview)':'story-cards','Expression Puppet (preview)':'expression-puppet','Rhythm Garden (preview)':'rhythm-garden','Lantern Leap (preview)':'lantern-leap','Garden Defense (preview)':'garden-defense','Pocket Rally (preview)':'pocket-rally','Sling Targets (preview)':'sling-targets','Gravity Pinball (preview)':'gravity-pinball','Kinetic Relay (preview)':'kinetic-relay','Tabletop Bot Arena (preview)':'tabletop-bot-arena','Pocket Golf (preview)':'pocket-golf','Target Garden (preview)':'target-garden','Orbital Courier (preview)':'orbital-courier','Clockwork Quest (preview)':'clockwork-quest','Memory Garden (preview)':'memory-garden','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
+    const name=accountApp(app)?.name||applicationDisplayNames[app]?.[1]||desktopMenu.find(entry=>({'Falling Blocks (preview)':'falling-blocks','Owl Companion (preview)':'owl-companion','Physics Playground (preview)':'physics-playground','Snake Garden (preview)':'snake-garden','Clockwork Room (preview)':'clockwork-room','Chess Study (preview)':'chess-study','Solitaire (preview)':'solitaire','Sky Courier (preview)':'sky-courier','Marble Works (preview)':'marble-works','Stack & Balance (preview)':'stack-balance','Crystal Defense (preview)':'crystal-defense','Drone Circuit (preview)':'drone-circuit','Reactive Control Desk (preview)':'reactive-control-desk','Story Cards (preview)':'story-cards','Expression Puppet (preview)':'expression-puppet','Rhythm Garden (preview)':'rhythm-garden','Lantern Leap (preview)':'lantern-leap','Garden Defense (preview)':'garden-defense','Pocket Rally (preview)':'pocket-rally','Sling Targets (preview)':'sling-targets','Gravity Pinball (preview)':'gravity-pinball','Kinetic Relay (preview)':'kinetic-relay','Tabletop Bot Arena (preview)':'tabletop-bot-arena','Pocket Golf (preview)':'pocket-golf','Target Garden (preview)':'target-garden','Orbital Courier (preview)':'orbital-courier','Clockwork Quest (preview)':'clockwork-quest','Memory Garden (preview)':'memory-garden','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[entry.name])===app)?.name||app;
     popup.append(textButton('New '+name+' window',()=>this.launch(app),'new-window'));
     for(const [index,w] of windows.entries()) {
-      const label=w.title+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
+      const label=displayedWindowTitle(w)+' · '+(index+1)+' · Workspace '+(w.workspace+1)+(w.minimized?' · minimized':w.id===this.active?' · active':'');
       const b=button('Switch to '+label,()=>this.activateWindow(w));b.dataset.windowId=String(w.id);
       const preview=make('div','task-preview');preview.append(make('div'),document.createTextNode(label));b.append(preview,document.createTextNode(label));popup.append(b);
     }
@@ -497,10 +536,10 @@ class Desktop {
   renderWindow(w) {
     this.fitWindow(w);
     const win=make('section','window'+(this.active===w.id?' focused':'')+(w.rolled?' rolled':''));
-    win.dataset.window=w.id;win.setAttribute('aria-label',w.title);win.style.left=w.x+'px';win.style.top=w.y+'px';
+    win.dataset.window=w.id;win.setAttribute('aria-label',displayedWindowTitle(w));win.style.left=w.x+'px';win.style.top=w.y+'px';
     win.style.width=w.w+'px';win.style.height=(w.rolled?this.config.titleHeight+reference.frameBorderBottom:w.h)+'px';
     win.addEventListener('pointerdown',()=>{if(this.active!==w.id){this.active=w.id;this.root.querySelectorAll('.window.focused').forEach(n=>n.classList.remove('focused'));win.classList.add('focused');this.root.querySelectorAll('.task').forEach(n=>{const active=n.dataset.app===w.app;n.classList.toggle('active',active);n.setAttribute('aria-pressed',String(active));});}});
-    const caption=make('div','window-caption');caption.append(icon(w.app),make('span','caption-text',w.title));
+    const caption=make('div','window-caption');caption.append(icon(w.app),make('span','caption-text',displayedWindowTitle(w)));
     const controls=make('div','window-controls');
     const actions=[
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
