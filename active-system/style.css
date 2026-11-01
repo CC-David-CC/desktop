@@ -206,3 +206,5 @@ body:has(.desktop .popup) .voice-control{visibility:hidden;pointer-events:none}
 .panel .app-menu-button,.compact-desktop .panel .app-menu-button{color:#f3f6f8;font-size:16px;font-weight:700;letter-spacing:0}
 .panel .clock,.compact-desktop .panel .clock{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.25px;line-height:1.1;white-space:nowrap}
 .compact-desktop .panel .clock{font-size:10px}
+
+.status-popup[data-status-type="clock"] .clock-time{font-size:1.25em;font-weight:600;font-variant-numeric:tabular-nums;margin-top:.4em}

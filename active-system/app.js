@@ -59,8 +59,12 @@ function sessionName() { return currentSession?.public.kind==='registered'?curre
 function compactDate(now){const two=n=>String(n).padStart(2,'0');return two(now.getMonth()+1)+'/'+two(now.getDate())+'/'+two(now.getFullYear()%100);}
 function refreshDesktopClocks(){
   const now=new Date(),date=compactDate(now),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
-  for(const clock of document.querySelectorAll('.panel .clock')){clock.firstChild.nodeValue=date;clock.lastChild.nodeValue=time;}
-  for(const line of document.querySelectorAll('.status-popup[data-status-type="clock"] .status-line'))line.textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  for(const clock of document.querySelectorAll('.panel .clock'))clock.textContent=date;
+  for(const popup of document.querySelectorAll('.status-popup[data-status-type="clock"]')){
+    const dateLine=popup.querySelector('.clock-date'),timeLine=popup.querySelector('.clock-time');
+    if(dateLine)dateLine.textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    if(timeLine)timeLine.textContent=time;
+  }
 }
 let desktopClockTimer;
 function scheduleDesktopClock(){clearTimeout(desktopClockTimer);refreshDesktopClocks();desktopClockTimer=setTimeout(scheduleDesktopClock,1000-Date.now()%1000+25);}
@@ -354,8 +358,8 @@ class Desktop {
     const workspaces=button('Workspaces',()=>{const open=this.root.querySelector('.status-popup[data-status-type="workspaces"]');this.closePopups();if(!open)this.showStatus('workspaces',workspaces);},'tray-button workspace-toggle');
     workspaces.title='Workspaces';workspaces.append(icon('network'),make('span','workspace-current',String(this.current+1)));p.append(workspaces);
     if(c.volumeButton)tray('volume','Volume','volume');
-    const clock=button('Date and time',()=>{this.closePopups();this.showStatus('clock',clock);},'clock');
-    const now=new Date();clock.append(document.createTextNode(compactDate(now)),make('br'),document.createTextNode(now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'})));p.append(clock);
+    const clock=button('Date and time',()=>{const open=this.root.querySelector('.status-popup[data-status-type="clock"]');this.closePopups();if(!open)this.showStatus('clock',clock);},'clock');
+    clock.textContent=compactDate(new Date());p.append(clock);
     const account=button('Session: '+sessionName(),()=>{this.closePopups();this.showStatus('account',account);},'account');
     const symbol=make('span','account-symbol','●');symbol.setAttribute('aria-hidden','true');account.append(symbol,make('span','account-label',sessionName()));account.title=sessionName();p.append(account);this.root.append(p);
   }
@@ -427,7 +431,7 @@ class Desktop {
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:80+offset,w:820,h:540};
     if(this.largeWorkspace()&&!wideEngineeringApps.has(app)){const used=new Set(this.windows.filter(n=>n.workspace===this.current&&!n.minimized&&Number.isInteger(n.tileSlot)).map(n=>n.tileSlot));w.tileSlot=[0,1,2,3].find(slot=>!used.has(slot))??this.nextId%4;}else w.tileSide=side;
     if(personal)w.ownerSub=personal.ownerSub;
-    this.windows.push(w);this.active=w.id;this.closePopups();this.render();feedback('Opened '+w.title+'.');return w;
+    this.windows.push(w);this.active=w.id;this.closePopups();this.render();return w;
   }
   showTasks(app,windows,anchor) {
     const popup=make('div','task-popup popup');
@@ -477,7 +481,10 @@ class Desktop {
       popup.append(grid);
     }
     else if(type==='volume'){popup.append(make('p','','No desktop audio apps are running. Browser audio is managed by your device.'));}
-    else if(type==='clock'){popup.append(make('div','status-line',new Date().toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})));}
+    else if(type==='clock'){
+      const now=new Date();
+      popup.append(make('div','status-line clock-date',now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})),make('div','status-line clock-time',now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'})));
+    }
     else {
       popup.append(make('div','status-line',currentSession?`${currentSession.trust.label} · ${currentSession.id}`:'Starting anonymous session…'));
       if(currentSession?.public.kind==='registered')popup.append(textButton('Sign out',async()=>{if(accountTransition)return;try{await endSession();}catch(error){feedback(error.message);}}));
@@ -598,7 +605,7 @@ function initializeVoiceControl(){
   const microphone='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>';
   const stopIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>';
   const mic=button('Start voice input',null,'voice-button');mic.title='Tap to start voice input';mic.innerHTML=microphone;
-  dock.hidden=!compactDesktop(innerWidth);
+  dock.hidden=true;
   dock.append(note,mic);document.body.append(dock);
   let lastInput=null,activeJob=null,phase='',speech,busy=false,noticeTimer;
   const editable=el=>el instanceof HTMLElement&&!el.disabled&&!el.readOnly&&(el.matches('textarea,input:not([type]),input[type=text],input[type=search],input[type=url],input[type=email],input[type=tel]')||el.isContentEditable);
@@ -606,7 +613,7 @@ function initializeVoiceControl(){
   document.addEventListener('pointerdown',e=>{const field=e.target.closest?.('input,textarea,[contenteditable]');if(field)applyScreenKeyboardPolicy(field);},true);
   const inputObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof HTMLElement)applyScreenKeyboardPolicy(node);});
   inputObserver.observe(document.querySelector('#previews'),{childList:true,subtree:true});
-  setScreenKeyboardEnabled(!compactDesktop(innerWidth));
+  setScreenKeyboardEnabled(true);
   const message=text=>{clearTimeout(noticeTimer);note.textContent=text;note.hidden=!text;position();if(text&&!busy)noticeTimer=setTimeout(()=>{note.hidden=true;},4000);};
   const status=text=>{
     phase=text;busy=/Loading|Opening|Listening|Transcribing/.test(text);
