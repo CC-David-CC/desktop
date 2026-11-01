@@ -288,7 +288,7 @@ class Desktop {
   renderPanel() {
     const c=this.config,p=make('div','panel');
     const apps=button('Applications',()=>{const open=this.menu;this.closePopups();if(!open){this.menu=true;this.showMenu(this.applicationItems(),0,0,0);} },'app-menu-button');
-    apps.append(icon('applications'));p.append(apps);
+    apps.textContent='APPs';p.append(apps);
     const tasks=make('div','tasks');
     const appIds=[...new Set([...this.pins,...this.windows.filter(w=>w.workspace===this.current&&accountWindow(w)).map(w=>w.app)])];
     for(const app of appIds) {
