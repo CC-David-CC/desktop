@@ -56,8 +56,9 @@ function setScreenKeyboardEnabled(enabled){
 
 
 function sessionName() { return currentSession?.public.kind==='registered'?currentSession.displayName:'Anon'; }
+function compactDate(now){const two=n=>String(n).padStart(2,'0');return two(now.getMonth()+1)+'/'+two(now.getDate())+'/'+two(now.getFullYear()%100);}
 function refreshDesktopClocks(){
-  const now=new Date(),date=now.toLocaleDateString('en-CA'),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  const now=new Date(),date=compactDate(now),time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
   for(const clock of document.querySelectorAll('.panel .clock')){clock.firstChild.nodeValue=date;clock.lastChild.nodeValue=time;}
   for(const line of document.querySelectorAll('.status-popup[data-status-type="clock"] .status-line'))line.textContent=now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 }
@@ -260,7 +261,7 @@ class Desktop {
   renderPanel() {
     const c=this.config,p=make('div','panel');
     const apps=button('Applications',()=>{const open=this.menu;this.closePopups();if(!open){this.menu=true;this.showMenu(this.applicationItems(),0,0,0);} },'app-menu-button');
-    apps.append(icon('applications'),make('span','applications-label','Applications'));p.append(apps);
+    apps.append(icon('applications'));p.append(apps);
     const tasks=make('div','tasks');
     const appIds=[...new Set([...this.pins,...this.windows.filter(w=>w.workspace===this.current&&accountWindow(w)).map(w=>w.app)])];
     for(const app of appIds) {
@@ -284,7 +285,7 @@ class Desktop {
     workspaces.title='Workspaces';workspaces.append(icon('network'),make('span','workspace-current',String(this.current+1)));p.append(workspaces);
     if(c.volumeButton)tray('volume','Volume','volume');
     const clock=button('Date and time',()=>{this.closePopups();this.showStatus('clock',clock);},'clock');
-    const now=new Date();clock.append(document.createTextNode(now.toLocaleDateString('en-CA')),make('br'),document.createTextNode(now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'})));p.append(clock);
+    const now=new Date();clock.append(document.createTextNode(compactDate(now)),make('br'),document.createTextNode(now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'})));p.append(clock);
     const account=button('Session: '+sessionName(),()=>{this.closePopups();this.showStatus('account',account);},'account');
     const symbol=make('span','account-symbol','●');symbol.setAttribute('aria-hidden','true');account.append(symbol,make('span','account-label',sessionName()));account.title=sessionName();p.append(account);this.root.append(p);
   }
@@ -292,23 +293,24 @@ class Desktop {
     this.menuLevels??=[];this.menuLevels[depth]=items;this.menuLevels.length=depth+1;
     this.root.querySelectorAll('.menu-pane').forEach(p=>{if(this.mobile||Number(p.dataset.depth)>=depth)p.remove();});
     const pane=make('div','menu-pane popup');pane.dataset.depth=depth;pane.setAttribute('role','menu');
-    pane.style.left=x+'px';pane.style.top=y+'px';pane.style.maxHeight=(resolution[1]-y-10)+'px';
+    pane.style.left='0px';pane.style.top=y+'px';pane.style.maxHeight=(resolution[1]-y-10)+'px';
     if(this.mobile&&depth>0){const back=textButton('‹ Back',()=>this.showMenu(this.menuLevels[depth-1],depth-1,8,0),'menu-row');pane.append(back);}
     for(const entry of items) {
       if(entry.separator){pane.append(make('div','menu-separator'));continue;}
       const row=button(entry.name,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title=entry.disabledTitle||'Background tool available to applications';}
-      row.append(icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',entry.name));
+      const arrow=make('span','arrow',entry.children?'‹':'');arrow.setAttribute('aria-hidden','true');
+      row.append(arrow,icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',entry.name));
       const open=()=>{
         pane.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));row.classList.add('selected');
         if(entry.children){
           const r=row.getBoundingClientRect(),base=this.root.getBoundingClientRect();
-          const nx=(r.left-base.left)/this.scaleFactor-280,ny=(r.top-base.top)/this.scaleFactor;
+          const nx=(r.left-base.left)/this.scaleFactor,ny=(r.top-base.top)/this.scaleFactor;
           this.showMenu(entry.children,depth+1,nx,ny);
         } else this.root.querySelectorAll('.menu-pane').forEach(n=>{if(Number(n.dataset.depth)>depth)n.remove();});
       };
-      if(entry.children){row.append(make('span','arrow','‹'));row.setAttribute('aria-haspopup','menu');row.addEventListener('pointerenter',e=>{if(!this.mobile&&e.pointerType!=='touch')open();});}
+      if(entry.children){row.setAttribute('aria-haspopup','menu');row.addEventListener('pointerenter',e=>{if(!this.mobile&&e.pointerType!=='touch')open();});}
       row.addEventListener('click',()=>{if(entry.children){open();return;}this.closePopups();this.launchEntry(entry);});
-      row.addEventListener('keydown',e=>{if(e.key==='ArrowRight'&&entry.children){open();$('.menu-pane[data-depth="'+(depth+1)+'"] button',this.root)?.focus();}});
+      row.addEventListener('keydown',e=>{if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&entry.children){e.preventDefault();open();$('.menu-pane[data-depth="'+(depth+1)+'"] button',this.root)?.focus();}});
       pane.append(row);
     }
     pane.addEventListener('keydown',e=>{
@@ -375,6 +377,7 @@ class Desktop {
     if(this.mobile)popup.style.width=Math.max(1,width-gap*2)+'px';
     popup.style.maxHeight=Math.max(1,height-gap*2)+'px';
     if(popup.classList.contains('menu-pane')&&Number(popup.dataset.depth)===0){x=width-popup.offsetWidth-gap;y=height-popup.offsetHeight-gap;}
+    else if(popup.classList.contains('menu-pane')&&!this.mobile){const prior=this.root.querySelector('.menu-pane[data-depth="'+(Number(popup.dataset.depth)-1)+'"]');if(prior)x=prior.offsetLeft-popup.offsetWidth+1;}
     else if(!popup.classList.contains('menu-pane'))x=width-popup.offsetWidth-gap;
     const left=Math.max(gap,Math.min(x,width-popup.offsetWidth-gap));
     const top=Math.max(gap,Math.min(y,height-popup.offsetHeight-gap));
