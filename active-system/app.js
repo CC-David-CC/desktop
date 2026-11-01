@@ -874,7 +874,12 @@ window.desktopLab={get lifecycle(){return desktopLifecycle?.state??null;},get se
 function syncVisibleViewport(){
   const view=window.visualViewport,host=document.querySelector('#previews');
   if(!host)return;
-  if(view&&view.scale===1&&compactDesktop(innerWidth)){host.style.height=Math.min(innerHeight,view.height)+'px';host.style.position='fixed';host.style.top=view.offsetTop+'px';}
+  // Android Chrome can collapse its browser toolbar only when the document
+  // itself can scroll. The desktop remains fixed to the visible viewport;
+  // app scrolling and keyboard resizing are still handled independently.
+  const androidChrome=/Android/i.test(navigator.userAgent)&&/(?:Chrome|Chromium)\//i.test(navigator.userAgent);
+  document.documentElement.classList.toggle('android-chrome-scroll',androidChrome&&matchMedia('(pointer:coarse)').matches&&compactDesktop(innerWidth)&&!!view&&view.scale===1);
+  if(view&&view.scale===1&&compactDesktop(innerWidth)){host.style.height=Math.min(innerHeight,view.height)+'px';host.style.position=document.documentElement.classList.contains('android-chrome-scroll')?'sticky':'fixed';host.style.top=view.offsetTop+'px';}
   else{host.style.height='';host.style.position='';host.style.top='';}
 }
 window.visualViewport?.addEventListener('resize',syncVisibleViewport);
