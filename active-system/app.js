@@ -905,7 +905,7 @@ function sessionDirtyWindows(){
 }
 function sameDirtyWindows(a,b){return a.length===b.length&&a.every((item,index)=>item.desktop===b[index].desktop&&item.w===b[index].w&&item.revisions===b[index].revisions);}
 function trackSessionEdits(){
-  let changed=false,invalid=false;const cleanup=[],observers=[],leases=[],tracked=[],textTracked=new WeakSet(),documentTracked=new WeakSet(),imageTracked=new WeakSet(),audioTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
+  let changed=false,invalid=false;const cleanup=[],observers=[],leases=[],tracked=[],textTracked=new WeakSet(),documentTracked=new WeakSet(),imageTracked=new WeakSet(),audioTracked=new WeakSet(),spreadsheetTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
   const membership=()=>[...surfaces.values()].flatMap(desktop=>desktop.windows.filter(accountWindow).map(w=>({desktop,w})));
   const initialMembers=membership();
   const read=life=>{const x=life.snapshot();if(!x||!Number.isSafeInteger(x.revision)||x.revision<0||typeof x.dirty!=='boolean'||typeof x.pending!=='boolean')throw Error('Invalid app lifecycle state.');return x;};
@@ -914,15 +914,15 @@ function trackSessionEdits(){
     for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
     for(const win of desktop.root.querySelectorAll('.window')){
       const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');
-      const life=['text','document-editor','image-editor','audio-editor'].includes(w?.app)?win.appView?.lifecycle:undefined;
-      if(w&&life!==undefined){try{if(!life||typeof life.snapshot!=='function'||typeof life.subscribe!=='function'||typeof life.quiesce!=='function')throw Error('Invalid app lifecycle.');const off=life.subscribe(mark);if(typeof off!=='function')throw Error('Invalid app lifecycle subscription.');cleanup.push(off);const initial=read(life);tracked.push({desktop,w,win,life,initial});if(w.app==='text')textTracked.add(w);else if(w.app==='document-editor')documentTracked.add(w);else if(w.app==='image-editor')imageTracked.add(w);else if(w.app==='audio-editor')audioTracked.add(w);}catch(error){console.error('App lifecycle unavailable:',error);invalid=true;}}
+      const life=['text','document-editor','image-editor','audio-editor','spreadsheet'].includes(w?.app)?win.appView?.lifecycle:undefined;
+      if(w&&life!==undefined){try{if(!life||typeof life.snapshot!=='function'||typeof life.subscribe!=='function'||typeof life.quiesce!=='function')throw Error('Invalid app lifecycle.');const off=life.subscribe(mark);if(typeof off!=='function')throw Error('Invalid app lifecycle subscription.');cleanup.push(off);const initial=read(life);tracked.push({desktop,w,win,life,initial});if(w.app==='text')textTracked.add(w);else if(w.app==='document-editor')documentTracked.add(w);else if(w.app==='image-editor')imageTracked.add(w);else if(w.app==='audio-editor')audioTracked.add(w);else if(w.app==='spreadsheet')spreadsheetTracked.add(w);}catch(error){console.error('App lifecycle unavailable:',error);invalid=true;}}
       else if(w&&text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);textTracked.add(w);}
       else if(w?.app==='text'){invalid=true;}
       const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets){for(const signal of [app.shell.currentChanged,app.shell.layoutModified])if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));}for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));if(w)notebookTracked.add(w);}}}}catch{changed=true;}
     }
   }
   const differs=()=>{if(changed||invalid||observers.some(observer=>observer.takeRecords().length))return true;const members=membership();if(members.length!==initialMembers.length||members.some((x,i)=>x.desktop!==initialMembers[i].desktop||x.w!==initialMembers[i].w))return true;try{return tracked.some(x=>{if(x.win.appView?.lifecycle!==x.life)return true;const state=read(x.life);return state.revision!==x.initial.revision||state.dirty!==x.initial.dirty||state.pending!==x.initial.pending;});}catch{return true;}};
-  return {textTracked,documentTracked,imageTracked,audioTracked,notebookTracked,changed:differs,async quiesce(){if(invalid)throw Error('An app lifecycle is unavailable.');try{for(const item of tracked){if(differs())throw Error('Work changed while preparing to sign out.');const lease=await item.life.quiesce();if(!lease||typeof lease.release!=='function')throw Error('An app pause was unavailable.');leases.push(lease);}if(differs())throw Error('Work changed while preparing to sign out.');}catch(error){release();throw error;}},dispose(){release();for(const observer of observers)observer.disconnect();for(const fn of cleanup)try{fn();}catch(error){console.error('Could not remove app listener:',error);}}};
+  return {textTracked,documentTracked,imageTracked,audioTracked,spreadsheetTracked,notebookTracked,changed:differs,async quiesce(){if(invalid)throw Error('An app lifecycle is unavailable.');try{for(const item of tracked){if(differs())throw Error('Work changed while preparing to sign out.');const lease=await item.life.quiesce();if(!lease||typeof lease.release!=='function')throw Error('An app pause was unavailable.');leases.push(lease);}if(differs())throw Error('Work changed while preparing to sign out.');}catch(error){release();throw error;}},dispose(){release();for(const observer of observers)observer.disconnect();for(const fn of cleanup)try{fn();}catch(error){console.error('Could not remove app listener:',error);}}};
 }
 
 function sessionHasUntrackedWork(w,tracker){
@@ -935,6 +935,7 @@ function sessionHasUntrackedWork(w,tracker){
     if(value===w.documentEditor&&w.app==='document-editor'&&tracker.documentTracked.has(w))continue;
     if(value===w.imageEditor&&w.app==='image-editor'&&tracker.imageTracked.has(w))continue;
     if(value===w.audioEditor&&w.app==='audio-editor'&&tracker.audioTracked.has(w))continue;
+    if(value===w.spreadsheet&&w.app==='spreadsheet'&&tracker.spreadsheetTracked.has(w))continue;
     // These two editors expose a monotonic edit counter; other applications
     // need an explicit lifecycle/revision contract before this can be trusted.
     if(!value.saving&&((value===w.imageEditor&&w.app==='image-editor')||(value===w.documentEditor&&w.app==='document-editor'))&&Number.isSafeInteger(value.edits))continue;
