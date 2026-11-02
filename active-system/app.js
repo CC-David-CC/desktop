@@ -910,7 +910,8 @@ function trackSessionEdits(){
   const initialMembers=membership();
   const read=life=>{const x=life.snapshot();if(!x||!Number.isSafeInteger(x.revision)||x.revision<0||typeof x.dirty!=='boolean'||typeof x.pending!=='boolean')throw Error('Invalid app lifecycle state.');return x;};
   const release=()=>{for(const lease of leases.splice(0).reverse())try{lease.release();}catch(error){console.error('Could not release app pause:',error);}};
-  for(const desktop of surfaces.values()){
+  const disposeTracker=()=>{release();for(const observer of observers)observer.disconnect();for(const fn of cleanup)try{fn();}catch(error){console.error('Could not remove app listener:',error);}};
+  try{for(const desktop of surfaces.values()){
     for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
     for(const win of desktop.root.querySelectorAll('.window')){
       const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');
@@ -921,8 +922,9 @@ function trackSessionEdits(){
       const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets){for(const signal of [app.shell.currentChanged,app.shell.layoutModified])if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));}for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));if(w)notebookTracked.add(w);}}}}catch{changed=true;}
     }
   }
+  }catch(error){disposeTracker();throw error;}
   const differs=()=>{if(changed||invalid||observers.some(observer=>observer.takeRecords().length))return true;const members=membership();if(members.length!==initialMembers.length||members.some((x,i)=>x.desktop!==initialMembers[i].desktop||x.w!==initialMembers[i].w))return true;try{return tracked.some(x=>{if(x.win.appView?.lifecycle!==x.life)return true;const state=read(x.life);return state.revision!==x.initial.revision||state.dirty!==x.initial.dirty||state.pending!==x.initial.pending;});}catch{return true;}};
-  return {textTracked,documentTracked,imageTracked,audioTracked,spreadsheetTracked,dataExplorerTracked,notebookTracked,changed:differs,async quiesce(){if(invalid)throw Error('An app lifecycle is unavailable.');try{for(const item of tracked){if(differs())throw Error('Work changed while preparing to sign out.');const lease=await item.life.quiesce();if(!lease||typeof lease.release!=='function')throw Error('An app pause was unavailable.');leases.push(lease);}if(differs())throw Error('Work changed while preparing to sign out.');}catch(error){release();throw error;}},dispose(){release();for(const observer of observers)observer.disconnect();for(const fn of cleanup)try{fn();}catch(error){console.error('Could not remove app listener:',error);}}};
+  return {textTracked,documentTracked,imageTracked,audioTracked,spreadsheetTracked,dataExplorerTracked,notebookTracked,changed:differs,async quiesce(){if(invalid)throw Error('An app lifecycle is unavailable.');try{for(const item of tracked){if(differs())throw Error('Work changed while preparing to sign out.');const lease=await item.life.quiesce();if(!lease||typeof lease.release!=='function')throw Error('An app pause was unavailable.');leases.push(lease);}if(differs())throw Error('Work changed while preparing to sign out.');}catch(error){release();throw error;}},dispose:disposeTracker};
 }
 
 function sessionHasUntrackedWork(w,tracker){
@@ -945,7 +947,7 @@ function sessionHasUntrackedWork(w,tracker){
   return w.app==='notebook'&&!tracker.notebookTracked.has(w);
 }
 async function confirmSessionEnd(){
-  const tracker=trackSessionEdits(),initial=sessionDirtyWindows();
+  let tracker,initial;try{tracker=trackSessionEdits();initial=sessionDirtyWindows();}catch(error){tracker?.dispose();console.error('Could not inspect app state:',error);feedback('Could not inspect an app safely. Your session is still open; close the app and try again.');return null;}
   const untracked=initial.find(({w})=>sessionHasUntrackedWork(w,tracker));
   if(untracked){await confirmDesktop('Close '+untracked.w.title+' using its own close button before ending or changing your session. This protects its unsaved work.',{title:'Finish in this app first',confirmLabel:'OK',cancelLabel:'Keep working'});tracker.dispose();return null;}
   if(initial.length){const names=initial.slice(0,4).map(({w})=>w.title).join(', '),more=initial.length>4?' and '+(initial.length-4)+' more':'';const ok=await confirmDesktop('End this session and discard unsaved work in '+names+more+'? Notebook output and temporary Linux files may also be lost.',{title:'Unsaved changes',confirmLabel:'End session',cancelLabel:'Keep working',danger:true});if(!ok){tracker.dispose();return null;}}
