@@ -785,7 +785,7 @@ function requiredLogin(){
   document.documentElement.classList.add('login-required');
   document.querySelector('.login-gate')?.remove();
   const gate=make('main','login-gate'),card=make('section','login-card'),form=make('form','login-form');
-  gate.setAttribute('aria-label','Sign in to CodiServer');card.append(make('h1','','CodiServer'),make('p','','Sign in or create an account to continue.'));
+  gate.setAttribute('aria-label','Sign in to CodiServer');card.append(make('h1','','CodiServer'),make('p','','Sign in or create an account to continue.'),make('p','login-hint',"This service is only for David's KSU friends and family. Anyone else using it is violating the terms of service. This restriction is not currently enforced."));
   const name=make('input'),password=make('input'),confirmation=make('input');
   name.type='text';name.required=true;name.minLength=3;name.maxLength=28;name.pattern='[A-Za-z][A-Za-z0-9]{2,27}';name.autocomplete='username';name.autocapitalize='none';name.spellcheck=false;name.setAttribute('aria-label','Username');
   password.type='password';password.required=true;password.maxLength=256;password.autocomplete='current-password';password.setAttribute('aria-label','Password');
