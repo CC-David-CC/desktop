@@ -556,6 +556,7 @@ class Desktop {
     try{const info=await (await deviceCacheModule).deviceStorageInfo();if(popup.isConnected)status.textContent='This domain uses approximately '+Math.round((info.usage||0)/1048576)+' MiB of the browser’s estimated '+Math.round((info.quota||0)/1048576)+' MiB allowance. '+(info.persistent?'Storage is persistent.':'Storage is currently best effort.')+(info.updateWaiting?' An app update will activate after existing tabs close.':'');}catch(error){if(popup.isConnected)status.textContent=error.message;}
   }
   requestWindowClose(w) {
+    if(w.app==='calculator'&&w.calculator?.saving){feedback('Wait for the Calculator file operation to finish before closing.');return;}
     const dirty=()=>windowHasChanges(w);
     const close=()=>{if(!this.windows.includes(w))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);if(this.active===w.id)this.active=null;this.render();};
     if(!dirty()){close();return;}
@@ -949,7 +950,7 @@ function sessionHasUntrackedWork(w,tracker){
 async function confirmSessionEnd(){
   let tracker,initial;try{tracker=trackSessionEdits();initial=sessionDirtyWindows();}catch(error){tracker?.dispose();console.error('Could not inspect app state:',error);feedback('Could not inspect an app safely. Your session is still open; close the app and try again.');return null;}
   const untracked=initial.find(({w})=>sessionHasUntrackedWork(w,tracker));
-  if(untracked){await confirmDesktop('Close '+untracked.w.title+' using its own close button before ending or changing your session. This protects its unsaved work.',{title:'Finish in this app first',confirmLabel:'OK',cancelLabel:'Keep working'});tracker.dispose();return null;}
+  if(untracked){const message=untracked.w.app==='calculator'&&untracked.w.calculator?.saving?'Finish the pending Calculator file operation before ending or changing your session.':'Close '+untracked.w.title+' using its own close button before ending or changing your session. This protects its unsaved work.';await confirmDesktop(message,{title:'Finish in this app first',confirmLabel:'OK',cancelLabel:'Keep working'});tracker.dispose();return null;}
   if(initial.length){const names=initial.slice(0,4).map(({w})=>w.title).join(', '),more=initial.length>4?' and '+(initial.length-4)+' more':'';const ok=await confirmDesktop('End this session and discard unsaved work in '+names+more+'? Notebook output and temporary Linux files may also be lost.',{title:'Unsaved changes',confirmLabel:'End session',cancelLabel:'Keep working',danger:true});if(!ok){tracker.dispose();return null;}}
   if(tracker.changed()||!sameDirtyWindows(initial,sessionDirtyWindows())){tracker.dispose();feedback('Work changed while confirming. Review it and try ending the session again.');return null;}
   return {initial,tracker};
