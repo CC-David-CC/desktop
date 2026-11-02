@@ -558,7 +558,7 @@ class Desktop {
     if(w.closeDialog?.isConnected)return;
     const dialog=document.createElement('dialog');dialog.className='codi-confirm-dialog';dialog.setAttribute('aria-labelledby','codi-close-title-'+w.id);dialog.setAttribute('aria-describedby','codi-close-message-'+w.id);
     const title=make('h2','','Unsaved changes');title.id='codi-close-title-'+w.id;
-    const message=make('p','','Close '+w.title+' and discard its unsaved changes?');message.id='codi-close-message-'+w.id;
+    const message=make('p','',w.microduck?.dirty?'Close '+w.title+'? The live simulation state is not fully saved and will end.':'Close '+w.title+' and discard its unsaved changes?');message.id='codi-close-message-'+w.id;
     const controls=make('div','codi-confirm-actions');
     const finish=discard=>{if(!dialog.isConnected)return;dialog.close();dialog.remove();delete w.closeDialog;if(discard)close();else this.root.querySelector(`[data-window="${w.id}"] [aria-label="Close"]`)?.focus();};
     controls.append(textButton('Keep editing',()=>finish(false)),textButton('Discard changes',()=>finish(true),'codi-confirm-danger'));dialog.append(title,message,controls);document.body.append(dialog);w.closeDialog=dialog;
