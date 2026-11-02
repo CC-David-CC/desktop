@@ -815,7 +815,8 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     for(const surface of surfaces.values())surface.root.inert=true;
     if(previous){try{await identityModule.logoutSession(identityConfig,previous);}catch(error){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not confirm sign-out. The server may have ended your session; recover your work or try again.');return;}}
     if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
-    for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');
+    try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
+    catch(error){console.warn('Account-change cleanup failed:',error);await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('The previous server session ended, but a window could not close. Copy remaining work before reloading; the next session may still be active.');return;}
     if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;try{await v86Instance.stop();}catch(error){console.warn('Could not stop Linux:',error.message);}v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     closeBrowserSourcePages();currentSession=sessionViews(next);
     startMirror();
@@ -896,24 +897,40 @@ function sessionDirtyWindows(){
     if(!accountWindow(w))continue;
     let embeddedDirty=false;
     if(w.app==='notebook')try{embeddedDirty=!!desktop.root.querySelector('[data-window="'+w.id+'"] .notebook-app iframe')?.contentWindow?.jupyterapp?.status?.isDirty;}catch{embeddedDirty=true;}
-    if(windowHasChanges(w)||embeddedDirty){const revisions=Object.values(w).filter(value=>value&&typeof value==='object'&&Number.isSafeInteger(value.revision)).map(value=>value.revision).join(',');result.push({desktop,w,revisions});}
+    if(windowHasChanges(w)||embeddedDirty){const revisions=Object.entries(w).flatMap(([name,value])=>value&&typeof value==='object'?['revision','edits','sequence'].filter(key=>Number.isSafeInteger(value[key])).map(key=>name+'.'+key+':'+value[key]):[]).join(',');result.push({desktop,w,revisions});}
   }
   return result;
 }
 function sameDirtyWindows(a,b){return a.length===b.length&&a.every((item,index)=>item.desktop===b[index].desktop&&item.w===b[index].w&&item.revisions===b[index].revisions);}
 function trackSessionEdits(){
-  let changed=false;const cleanup=[],observers=[],mark=()=>{changed=true;};
+  let changed=false;const cleanup=[],observers=[],textTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
   for(const desktop of surfaces.values()){
     for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
     for(const win of desktop.root.querySelectorAll('.window')){
-      const text=win.querySelector('.codi-text-editor .cm-content');if(text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);}
-      const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));}}}catch{changed=true;}
+      const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');if(w&&text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);textTracked.add(w);}
+      const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));if(w)notebookTracked.add(w);}}}catch{changed=true;}
     }
   }
-  return {changed:()=>changed||observers.some(observer=>observer.takeRecords().length),dispose(){for(const observer of observers)observer.disconnect();for(const fn of cleanup)fn();}};
+  return {textTracked,notebookTracked,changed:()=>changed||observers.some(observer=>observer.takeRecords().length),dispose(){for(const observer of observers)observer.disconnect();for(const fn of cleanup)fn();}};
+}
+function sessionHasUntrackedWork(w,tracker){
+  for(const value of Object.values(w)){
+    if(!value||typeof value!=='object')continue;
+    let dirty=!!(value.dirty||value.saving);try{if(typeof value.hasChanges==='function')dirty=dirty||!!value.hasChanges();}catch{return true;}
+    if(!dirty)continue;
+    if(value===w.notebook&&w.app==='notebook'&&tracker.notebookTracked.has(w))continue;
+    if(value===w.editor&&w.app==='text'&&tracker.textTracked.has(w))continue;
+    // These two editors expose a monotonic edit counter; other applications
+    // need an explicit lifecycle/revision contract before this can be trusted.
+    if(!value.saving&&((value===w.imageEditor&&w.app==='image-editor')||(value===w.documentEditor&&w.app==='document-editor'))&&Number.isSafeInteger(value.edits))continue;
+    return true;
+  }
+  return w.app==='notebook'&&!tracker.notebookTracked.has(w);
 }
 async function confirmSessionEnd(){
   const tracker=trackSessionEdits(),initial=sessionDirtyWindows();
+  const untracked=initial.find(({w})=>sessionHasUntrackedWork(w,tracker));
+  if(untracked){await confirmDesktop('Close '+untracked.w.title+' using its own close button before ending or changing your session. This protects its unsaved work.',{title:'Finish in this app first',confirmLabel:'OK',cancelLabel:'Keep working'});tracker.dispose();return null;}
   if(initial.length){const names=initial.slice(0,4).map(({w})=>w.title).join(', '),more=initial.length>4?' and '+(initial.length-4)+' more':'';const ok=await confirmDesktop('End this session and discard unsaved work in '+names+more+'? Notebook output and temporary Linux files may also be lost.',{title:'Unsaved changes',confirmLabel:'End session',cancelLabel:'Keep working',danger:true});if(!ok){tracker.dispose();return null;}}
   if(tracker.changed()||!sameDirtyWindows(initial,sessionDirtyWindows())){tracker.dispose();feedback('Work changed while confirming. Review it and try ending the session again.');return null;}
   return {initial,tracker};
@@ -934,7 +951,8 @@ async function endSession(){
   catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Could not confirm sign-out. The server may have ended this session; recover your work or try again.');return;}
   if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Work changed during sign-out. The server session ended; recover your work before reloading.');return;}
   closeBrowserSourcePages();
-  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window'))disposeSessionView(win,'Session ending');
+  try{for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window'))disposeSessionView(win,'Session ending');}
+  catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;console.warn('Session cleanup failed:',error);feedback('The server signed out, but a window could not close. Copy remaining work before reloading.');return;}
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
