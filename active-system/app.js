@@ -887,7 +887,7 @@ async function startGuest(){
 }
 function disposeSessionView(win,reason){
   const frame=win.querySelector('.notebook-app iframe');
-  if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of [...app.shell.widgets('main')])widget.dispose();}catch(error){console.warn('Could not dispose notebook views:',error.message);}
+  if(frame){const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of [...app.shell.widgets('main')])widget.dispose();}
   disposePublicAppView(win,reason);win.remove();
 }
 let sessionEnding=false;
