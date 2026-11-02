@@ -852,6 +852,13 @@ async function maintainIdentity(){
 let bootEpoch=0;
 let bootFailed=false;
 function failGuest(message){bootFailed=true;guestState='error';guestMessage=String(message);guestFiles.ready=false;appendSerial('\r\nGuest error: '+guestMessage+'\r\n');if(serialFrame)cancelAnimationFrame(serialFrame);flushSerial();feedback(guestMessage);refreshTerminals();}
+function reportGuestWorkerFailure(error,epoch){
+  if(epoch!==bootEpoch)return;
+  let cleanupFailed=false;
+  try{guestNetworkAdapter?.destroy();guestNetworkAdapter=null;}
+  catch(cleanupError){cleanupFailed=true;console.warn('Linux network cleanup failed:',cleanupError);}
+  failGuest((error?.message||String(error))+(cleanupFailed?' Linux network cleanup was incomplete; reload before retrying.':''));
+}
 async function startGuest(){
   guestFiles.ready=false;
   const epoch=++bootEpoch;
@@ -874,7 +881,7 @@ async function startGuest(){
     const {GuestWorkerClient}=await import(new URL('assets/desktop/guest-worker-client.mjs',document.baseURI));if(epoch!==bootEpoch)return;
     // v86 selects the browser scheduler when available; its normal nested
     // Worker scheduler remains the fallback. A fragment keeps the cache URL.
-    const emulator=new GuestWorkerClient(new URL(pageBase+'/assets/desktop/guest-worker-runtime.js#use-scheduling-api',location.origin),{onFatal:error=>{if(epoch===bootEpoch){guestNetworkAdapter?.destroy();guestNetworkAdapter=null;failGuest(error.message);}}});
+    const emulator=new GuestWorkerClient(new URL(pageBase+'/assets/desktop/guest-worker-runtime.js#use-scheduling-api',location.origin),{onFatal:error=>reportGuestWorkerFailure(error,epoch)});
     const options={wasm_path:new URL('.build/v86/v86.wasm',document.baseURI).href,memory_size:256*1024*1024,
       bios:{url:new URL('.build/v86/seabios.bin',document.baseURI).href},vga_bios:{url:new URL('.build/v86/vgabios.bin',document.baseURI).href},
       bzimage:{url:new URL('.build/v86/vmlinuz',document.baseURI).href},initrd:{url:new URL(image.path,document.baseURI).href},
