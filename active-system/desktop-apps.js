@@ -1,5 +1,13 @@
 'use strict';
-let publicAppLoader;
+let publicAppLoader,publicCommandRegistryPromise;
+function publicCommandRegistry(){
+ return publicCommandRegistryPromise??=import('./assets/desktop/command-registry.mjs').then(({createCommandRegistry})=>{
+  const registry=createCommandRegistry({currentSubject:signedInSubject,currentSession:()=>currentSession});
+  // In-page API only. No remote-agent transport is installed by this service.
+  window.codiDesktopCommands=Object.freeze({list:registry.list,execute:registry.execute});
+  return registry;
+ }).catch(error=>{publicCommandRegistryPromise=null;throw error;});
+}
 // Promises settle false on cancellation or app disposal, so stale actions cannot continue.
 function confirmDesktop(message,{title='Confirm',confirmLabel='Continue',cancelLabel='Cancel',danger=false,signal}={}){
  if(signal?.aborted)return Promise.resolve(false);
@@ -24,6 +32,8 @@ function publicAppContent(id,desktop,w){
       const module=await loader.loadApp(id);
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
       const host=publicAppHost(desktop,w,id);
+      try{const registry=await publicCommandRegistry(),owner=w.ownerSub||signedInSubject();if(owner)host.commands=registry.scope({windowId:String(w.id),appId:id,owner,isOpen:()=>desktop.windows.includes(w)});}catch(error){console.error('App command service unavailable',error);}
+      if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
       instance=loader.mountApp(module,host);const body=instance.element;
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w)){instance.dispose('View removed during mount');return;}
       if(!(body instanceof HTMLElement)||!body.classList.contains('window-content'))throw Error('Invalid app view');
