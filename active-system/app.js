@@ -245,6 +245,8 @@ function initialWindows(){return [];}
 const windowRect=w=>({x:w.x,y:w.y,w:w.w,h:w.h});
 const compactDesktop=width=>width<=720||(matchMedia('(pointer:coarse)').matches&&width<1024);
 const wideEngineeringApps=new Set(['microduck','electronics-design','circuitjs','jsketcher','digital-logic','arduino-simulator','pico-simulator','replicad','kiri-moto','mesh-tool','gcode-preview']);
+function windowHasChanges(w){return !!(w.microduck?.dirty||w.calculator?.saving||w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.dataExplorer?.dirty||w.spreadsheet?.dirty||(w.audioEditor?.dirty||w.audioEditor?.hasChanges?.())||w.fallingBlocks?.dirty||w.owlCompanion?.dirty||w.physicsPlayground?.dirty||w.snakeGarden?.dirty||w.clockworkRoom?.dirty||w.chessStudy?.dirty||w.solitaire?.dirty||w.skyCourier?.dirty||w.marbleWorks?.dirty||w.stackBalance?.dirty||w.crystalDefense?.dirty||w.droneCircuit?.dirty||w.reactiveControlDesk?.dirty||w.storyCards?.dirty||w.expressionPuppet?.dirty||w.rhythmGarden?.dirty||w.lanternLeap?.dirty||w.gardenDefense?.dirty||w.pocketRally?.dirty||w.slingTargets?.dirty||w.gravityPinball?.dirty||w.kineticRelay?.dirty||w.tabletopBotArena?.dirty||w.pocketGolf?.dirty||w.targetGarden?.dirty||w.orbitalCourier?.dirty||w.clockworkQuest?.dirty||w.memoryGarden?.dirty||w.replicad?.dirty||w.gridTools?.dirty||w.logic?.dirty||w.jsketcher?.hasChanges?.()||w.circuitjs?.hasChanges?.()||w.electronicsDesign?.dirty||w.arduinoSketch?.dirty||w.arduinoSimulator?.saving||w.picoSimulator?.hasChanges?.()||w.stitchConverter?.dirty||w.embroideryStudio?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty||w.notebook?.dirty||w.browserDownloadState?.dirty);}
+
 class Desktop {
   constructor(parent, config, label, state) {
     this.baseConfig = {...config};this.config={...config}; this.windows = state?.windows || initialWindows(); this.current=state?.current || 0;this.active=state?.active ?? null;
@@ -260,7 +262,7 @@ class Desktop {
   }
   dispose(){this.observer.disconnect();}
   layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
-  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));}catch(error){console.warn('Could not save window layout:',error.message);}}
+  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return true;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));return true;}catch(error){console.warn('Could not save window layout:',error.message);return false;}}
   restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
   get pins(){return (this.workspacePins.get(this.current)??['files','terminal']).filter(availableApplication);}
   set pins(value){const other=(this.workspacePins.get(this.current)||[]).filter(app=>!availableApplication(app));this.workspacePins.set(this.current,[...new Set([...other,...value])]);}
@@ -554,7 +556,7 @@ class Desktop {
     try{const info=await (await deviceCacheModule).deviceStorageInfo();if(popup.isConnected)status.textContent='This domain uses approximately '+Math.round((info.usage||0)/1048576)+' MiB of the browser’s estimated '+Math.round((info.quota||0)/1048576)+' MiB allowance. '+(info.persistent?'Storage is persistent.':'Storage is currently best effort.')+(info.updateWaiting?' An app update will activate after existing tabs close.':'');}catch(error){if(popup.isConnected)status.textContent=error.message;}
   }
   requestWindowClose(w) {
-    const dirty=()=>w.microduck?.dirty||w.calculator?.saving||w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.dataExplorer?.dirty||w.spreadsheet?.dirty||(w.audioEditor?.dirty||w.audioEditor?.hasChanges?.())||w.fallingBlocks?.dirty||w.owlCompanion?.dirty||w.physicsPlayground?.dirty||w.snakeGarden?.dirty||w.clockworkRoom?.dirty||w.chessStudy?.dirty||w.solitaire?.dirty||w.skyCourier?.dirty||w.marbleWorks?.dirty||w.stackBalance?.dirty||w.crystalDefense?.dirty||w.droneCircuit?.dirty||w.reactiveControlDesk?.dirty||w.storyCards?.dirty||w.expressionPuppet?.dirty||w.rhythmGarden?.dirty||w.lanternLeap?.dirty||w.gardenDefense?.dirty||w.pocketRally?.dirty||w.slingTargets?.dirty||w.gravityPinball?.dirty||w.kineticRelay?.dirty||w.tabletopBotArena?.dirty||w.pocketGolf?.dirty||w.targetGarden?.dirty||w.orbitalCourier?.dirty||w.clockworkQuest?.dirty||w.memoryGarden?.dirty||w.replicad?.dirty||w.gridTools?.dirty||w.logic?.dirty||w.jsketcher?.hasChanges?.()||w.circuitjs?.hasChanges?.()||w.electronicsDesign?.dirty||w.arduinoSketch?.dirty||w.arduinoSimulator?.saving||w.picoSimulator?.hasChanges?.()||w.stitchConverter?.dirty||w.embroideryStudio?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty||w.notebook?.dirty||w.browserDownloadState?.dirty;
+    const dirty=()=>windowHasChanges(w);
     const close=()=>{if(!this.windows.includes(w))return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);if(this.active===w.id)this.active=null;this.render();};
     if(!dirty()){close();return;}
     if(w.closeDialog?.isConnected)return;
@@ -801,22 +803,27 @@ function requiredLogin(){
   return new Promise(resolve=>{form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value);password.value='';confirmation.value='';gate.remove();resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;}});});
 }
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
-  if(accountTransition)throw Error('An account change is already in progress.');
-  accountTransition=true;
+  if(accountTransition||sessionEnding)throw Error('An account change is already in progress.');
+  accountTransition=true;let approved;
   try{
+    const prior=currentSession;approved=prior?await confirmSessionEnd():{initial:[],tracker:trackSessionEdits()};
+    if(!approved||currentSession!==prior)return;
     const next=await accountSession(mode,username,password);
-    if(!stillWanted()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});return;}
+    if(!stillWanted()||currentSession!==prior||(approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});if(stillWanted())feedback('Work changed while signing in. Review it and try again.');return;}
     const previous=currentSession;
-    if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;await v86Instance.stop();v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
-    for(const surface of surfaces.values())surface.saveLayout();
+    for(const surface of surfaces.values())if(!surface.saveLayout()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not save your window layout. Your current session is still open.');return;}
+    for(const surface of surfaces.values())surface.root.inert=true;
+    if(previous){try{await identityModule.logoutSession(identityConfig,previous);}catch(error){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not confirm sign-out. The server may have ended your session; recover your work or try again.');return;}}
+    if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
+    for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');
+    if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;try{await v86Instance.stop();}catch(error){console.warn('Could not stop Linux:',error.message);}v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     closeBrowserSourcePages();currentSession=sessionViews(next);
     startMirror();
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
-    if(previous)identityModule.logoutSession(identityConfig,previous).catch(()=>{});
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});else await startGuest();
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
-  }finally{accountTransition=false;}
+  }finally{approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
 }
 async function maintainIdentity(){
   if(!currentSession||renewingIdentity||accountTransition)return;
@@ -877,16 +884,63 @@ async function startGuest(){
     emulator.start(options);
   }catch(error){if(epoch!==bootEpoch)return;guestNetworkAdapter?.destroy();guestNetworkAdapter=null;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}failGuest(error.message||String(error));}
 }
+function disposeSessionView(win,reason){
+  const frame=win.querySelector('.notebook-app iframe');
+  if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of [...app.shell.widgets('main')])widget.dispose();}catch(error){console.warn('Could not dispose notebook views:',error.message);}
+  disposePublicAppView(win,reason);win.remove();
+}
+let sessionEnding=false;
+function sessionDirtyWindows(){
+  const result=[];
+  for(const desktop of surfaces.values())for(const w of desktop.windows){
+    if(!accountWindow(w))continue;
+    let embeddedDirty=false;
+    if(w.app==='notebook')try{embeddedDirty=!!desktop.root.querySelector('[data-window="'+w.id+'"] .notebook-app iframe')?.contentWindow?.jupyterapp?.status?.isDirty;}catch{embeddedDirty=true;}
+    if(windowHasChanges(w)||embeddedDirty){const revisions=Object.values(w).filter(value=>value&&typeof value==='object'&&Number.isSafeInteger(value.revision)).map(value=>value.revision).join(',');result.push({desktop,w,revisions});}
+  }
+  return result;
+}
+function sameDirtyWindows(a,b){return a.length===b.length&&a.every((item,index)=>item.desktop===b[index].desktop&&item.w===b[index].w&&item.revisions===b[index].revisions);}
+function trackSessionEdits(){
+  let changed=false;const cleanup=[],observers=[],mark=()=>{changed=true;};
+  for(const desktop of surfaces.values()){
+    for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
+    for(const win of desktop.root.querySelectorAll('.window')){
+      const text=win.querySelector('.codi-text-editor .cm-content');if(text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);}
+      const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));}}}catch{changed=true;}
+    }
+  }
+  return {changed:()=>changed||observers.some(observer=>observer.takeRecords().length),dispose(){for(const observer of observers)observer.disconnect();for(const fn of cleanup)fn();}};
+}
+async function confirmSessionEnd(){
+  const tracker=trackSessionEdits(),initial=sessionDirtyWindows();
+  if(initial.length){const names=initial.slice(0,4).map(({w})=>w.title).join(', '),more=initial.length>4?' and '+(initial.length-4)+' more':'';const ok=await confirmDesktop('End this session and discard unsaved work in '+names+more+'? Notebook output and temporary Linux files may also be lost.',{title:'Unsaved changes',confirmLabel:'End session',cancelLabel:'Keep working',danger:true});if(!ok){tracker.dispose();return null;}}
+  if(tracker.changed()||!sameDirtyWindows(initial,sessionDirtyWindows())){tracker.dispose();feedback('Work changed while confirming. Review it and try ending the session again.');return null;}
+  return {initial,tracker};
+}
 async function endSession(){
-
+  if(sessionEnding||accountTransition)return;
+  sessionEnding=true;let approved;
+  try{
+  const session=currentSession;
+  approved=await confirmSessionEnd();
+  if(!approved||currentSession!==session)return;
+  if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){feedback('Work changed while confirming. Review it and try ending the session again.');return;}
+  for(const desktop of surfaces.values())if(!desktop.saveLayout()){feedback('Could not save your window layout. Your session is still open; try again.');return;}
+  // Prevent new input while the server request is in flight. On an uncertain
+  // outcome the desktop remains intact so the user can retry or recover work.
+  for(const desktop of surfaces.values())desktop.root.inert=true;
+  try{if(session&&identityModule)await identityModule.logoutSession(identityConfig,session);}
+  catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Could not confirm sign-out. The server may have ended this session; recover your work or try again.');return;}
+  if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Work changed during sign-out. The server session ended; recover your work before reloading.');return;}
   closeBrowserSourcePages();
-  for(const desktop of surfaces.values())desktop.saveLayout();
+  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window'))disposeSessionView(win,'Session ending');
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
   ++bootEpoch;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}
-  if(currentSession&&identityModule){try{await identityModule.logoutSession(identityConfig,currentSession);}catch(error){console.warn('Session logout failed:',error.message);}}
   currentSession=null;serialOutput.length=0;serialPending='';guestState='loading';feedback('Signing out…');location.reload();
+  }finally{approved?.tracker.dispose();sessionEnding=false;}
 }
 let bootRecovery=null,bootRetry=0;
 async function initializeWithRecovery(){
