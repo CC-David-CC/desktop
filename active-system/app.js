@@ -810,6 +810,8 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     if(!approved||currentSession!==prior)return;
     const next=await accountSession(mode,username,password);
     if(!stillWanted()||currentSession!==prior||(approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});if(stillWanted())feedback('Work changed while signing in. Review it and try again.');return;}
+    try{await approved.tracker.quiesce();}catch(error){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback(error.message||'Could not pause Text.');return;}
+    if(!stillWanted()||currentSession!==prior||approved.tracker.changed()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Work changed while preparing to sign in.');return;}
     const previous=currentSession;
     for(const surface of surfaces.values())if(!surface.saveLayout()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not save your window layout. Your current session is still open.');return;}
     for(const surface of surfaces.values())surface.root.inert=true;
@@ -903,16 +905,26 @@ function sessionDirtyWindows(){
 }
 function sameDirtyWindows(a,b){return a.length===b.length&&a.every((item,index)=>item.desktop===b[index].desktop&&item.w===b[index].w&&item.revisions===b[index].revisions);}
 function trackSessionEdits(){
-  let changed=false;const cleanup=[],observers=[],textTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
+  let changed=false,invalid=false;const cleanup=[],observers=[],leases=[],tracked=[],textTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
+  const membership=()=>[...surfaces.values()].flatMap(desktop=>desktop.windows.filter(accountWindow).map(w=>({desktop,w})));
+  const initialMembers=membership();
+  const read=life=>{const x=life.snapshot();if(!x||!Number.isSafeInteger(x.revision)||x.revision<0||typeof x.dirty!=='boolean'||typeof x.pending!=='boolean')throw Error('Invalid Text lifecycle state.');return x;};
+  const release=()=>{for(const lease of leases.splice(0).reverse())try{lease.release();}catch(error){console.error('Could not release app pause:',error);}};
   for(const desktop of surfaces.values()){
     for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
     for(const win of desktop.root.querySelectorAll('.window')){
-      const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');if(w&&text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);textTracked.add(w);}
+      const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');
+      const life=w?.app==='text'?win.appView?.lifecycle:undefined;
+      if(w&&life!==undefined){try{if(!life||typeof life.snapshot!=='function'||typeof life.subscribe!=='function'||typeof life.quiesce!=='function')throw Error('Invalid Text lifecycle.');const off=life.subscribe(mark);if(typeof off!=='function')throw Error('Invalid Text lifecycle subscription.');cleanup.push(off);const initial=read(life);tracked.push({desktop,w,win,life,initial});textTracked.add(w);}catch(error){console.error('Text lifecycle unavailable:',error);invalid=true;}}
+      else if(w&&text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);textTracked.add(w);}
+      else if(w?.app==='text'){invalid=true;}
       const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets){for(const signal of [app.shell.currentChanged,app.shell.layoutModified])if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));}for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));if(w)notebookTracked.add(w);}}}}catch{changed=true;}
     }
   }
-  return {textTracked,notebookTracked,changed:()=>changed||observers.some(observer=>observer.takeRecords().length),dispose(){for(const observer of observers)observer.disconnect();for(const fn of cleanup)fn();}};
+  const differs=()=>{if(changed||invalid||observers.some(observer=>observer.takeRecords().length))return true;const members=membership();if(members.length!==initialMembers.length||members.some((x,i)=>x.desktop!==initialMembers[i].desktop||x.w!==initialMembers[i].w))return true;try{return tracked.some(x=>{if(x.win.appView?.lifecycle!==x.life)return true;const state=read(x.life);return state.revision!==x.initial.revision||state.dirty!==x.initial.dirty||state.pending!==x.initial.pending;});}catch{return true;}};
+  return {textTracked,notebookTracked,changed:differs,async quiesce(){if(invalid)throw Error('Text lifecycle is unavailable.');try{for(const item of tracked){if(differs())throw Error('Work changed while preparing to sign out.');const lease=await item.life.quiesce();if(!lease||typeof lease.release!=='function')throw Error('Text pause was unavailable.');leases.push(lease);}if(differs())throw Error('Work changed while preparing to sign out.');}catch(error){release();throw error;}},dispose(){release();for(const observer of observers)observer.disconnect();for(const fn of cleanup)try{fn();}catch(error){console.error('Could not remove app listener:',error);}}};
 }
+
 function sessionHasUntrackedWork(w,tracker){
   for(const value of Object.values(w)){
     if(!value||typeof value!=='object')continue;
@@ -943,6 +955,8 @@ async function endSession(){
   approved=await confirmSessionEnd();
   if(!approved||currentSession!==session)return;
   if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){feedback('Work changed while confirming. Review it and try ending the session again.');return;}
+  try{await approved.tracker.quiesce();}catch(error){feedback(error.message||'Could not pause Text.');return;}
+  if(currentSession!==session||approved.tracker.changed()){feedback('Work changed while preparing to sign out.');return;}
   for(const desktop of surfaces.values())if(!desktop.saveLayout()){feedback('Could not save your window layout. Your session is still open; try again.');return;}
   // Prevent new input while the server request is in flight. On an uncertain
   // outcome the desktop remains intact so the user can retry or recover work.
