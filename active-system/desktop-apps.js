@@ -48,7 +48,7 @@ function publicAppContent(id,desktop,w){
   load();return placeholder;
 }
 function disposePublicAppView(win,reason='View removed'){
-  const view=win.appView;win.appView=null;view?.dispose(reason);
+  const view=win.appView;win.appView=null;return view?.dispose(reason)||[];
 }
 // Adapter for the pinned v86 filesystem. All contents live in browser memory.
 const guestFiles = {

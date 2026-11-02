@@ -816,7 +816,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     if(previous){try{await identityModule.logoutSession(identityConfig,previous);}catch(error){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not confirm sign-out. The server may have ended your session; recover your work or try again.');return;}}
     if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
     try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
-    catch(error){console.warn('Account-change cleanup failed:',error);await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('The previous server session ended, but a window could not close. Copy remaining work before reloading; the next session may still be active.');return;}
+    catch(error){console.warn('Account-change cleanup failed:',error);await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
     if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;try{await v86Instance.stop();}catch(error){console.warn('Could not stop Linux:',error.message);}v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     closeBrowserSourcePages();currentSession=sessionViews(next);
     startMirror();
@@ -888,7 +888,7 @@ async function startGuest(){
 function disposeSessionView(win,reason){
   const frame=win.querySelector('.notebook-app iframe');
   if(frame){const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of [...app.shell.widgets('main')])widget.dispose();}
-  disposePublicAppView(win,reason);win.remove();
+  const errors=disposePublicAppView(win,reason);win.remove();if(errors.length)throw new AggregateError(errors,'An app did not finish cleanup.');
 }
 let sessionEnding=false;
 function sessionDirtyWindows(){
@@ -952,7 +952,7 @@ async function endSession(){
   if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Work changed during sign-out. The server session ended; recover your work before reloading.');return;}
   closeBrowserSourcePages();
   try{for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window'))disposeSessionView(win,'Session ending');}
-  catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;console.warn('Session cleanup failed:',error);feedback('The server signed out, but a window could not close. Copy remaining work before reloading.');return;}
+  catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;console.warn('Session cleanup failed:',error);feedback('The server signed out, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading.');return;}
   desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
