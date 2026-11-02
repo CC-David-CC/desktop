@@ -908,7 +908,7 @@ function trackSessionEdits(){
     for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
     for(const win of desktop.root.querySelectorAll('.window')){
       const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');if(w&&text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);textTracked.add(w);}
-      const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets)for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));if(w)notebookTracked.add(w);}}}catch{changed=true;}
+      const frame=win.querySelector('.notebook-app iframe');if(frame)try{const app=frame.contentWindow?.jupyterapp;if(app?.shell?.widgets){for(const signal of [app.shell.currentChanged,app.shell.layoutModified])if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));}for(const widget of app.shell.widgets('main')){const signal=widget.context?.model?.contentChanged;if(signal?.connect){signal.connect(mark);cleanup.push(()=>signal.disconnect(mark));if(w)notebookTracked.add(w);}}}}catch{changed=true;}
     }
   }
   return {textTracked,notebookTracked,changed:()=>changed||observers.some(observer=>observer.takeRecords().length),dispose(){for(const observer of observers)observer.disconnect();for(const fn of cleanup)fn();}};
