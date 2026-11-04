@@ -96,10 +96,9 @@ async function mirrorFileContext(){
   if(!owner||!serverFilesAvailable())throw Error('Sign in to use your files.');
   if(mirrorSession!==session){mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=session;}
   if(!mirrorContextPromise)mirrorContextPromise=(async()=>{
-    const [server,module]=await Promise.all([serverFileContext(),import('./storage/browser/mirror.mjs')]);
+    const [server,module,context]=await Promise.all([serverFileContext(),import('./storage/browser/mirror.mjs'),import('./storage/browser/account-context.mjs')]);
     if(currentSession!==session||signedInSubject()!==owner)throw Error('Account changed. Reopen your files.');
-    const scope=JSON.stringify(['codi-file-mirror/1',identityConfig.identity.issuer,owner]);
-    const files=new module.MirroredFiles({scope,server:server.files,valid:server.valid});
+    const files=context.createAccountFileMirror({issuer:identityConfig.identity.issuer,owner,server:server.files,valid:server.valid,storage:identityConfig.fileStorage??null});
     mirrorInstance=files;
     // The browser decides whether to grant persistent storage; no guarantee.
     navigator.storage?.persist?.().catch(()=>{});files.sync().catch(()=>{});
