@@ -822,7 +822,8 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
     catch(error){console.warn('Account-change cleanup failed:',error);await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
     if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;try{await v86Instance.stop();}catch(error){console.warn('Could not stop Linux:',error.message);}v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
-    closeBrowserSourcePages();currentSession=sessionViews(next);
+    // Let abort handlers terminate their workers before installing the next session.
+    closeAccountMirror({suspend:true});await Promise.resolve();closeBrowserSourcePages();currentSession=sessionViews(next);
     startMirror();
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
@@ -983,7 +984,8 @@ async function endSession(){
   closeBrowserSourcePages();
   try{for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window'))disposeSessionView(win,'Session ending');}
   catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;console.warn('Session cleanup failed:',error);feedback('The server signed out, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading.');return;}
-  desktopLifecycle?.stop();desktopLifecycle=null;
+  // Let abort handlers terminate their workers before requesting navigation.
+  closeAccountMirror({suspend:true});await Promise.resolve();desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
   ++bootEpoch;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}

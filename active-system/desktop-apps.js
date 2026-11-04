@@ -90,23 +90,28 @@ async function serverFileContext(){
 setInterval(()=>guestFiles.changed(),2500);
 
 // One account-bound mirror for all desktop apps. Recreate it after a session change.
-let mirrorContextPromise, mirrorSession, mirrorInstance;
+let mirrorContextPromise, mirrorSession, mirrorInstance, mirrorGeneration=0, mirrorSuspended=false;
+function closeAccountMirror({suspend=false}={}){
+  if(suspend)mirrorSuspended=true;
+  ++mirrorGeneration;
+  mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=null;
+}
 async function mirrorFileContext(){
   const session=currentSession, owner=signedInSubject();
-  if(!owner||!serverFilesAvailable())throw Error('Sign in to use your files.');
-  if(mirrorSession!==session){mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=session;}
-  if(!mirrorContextPromise)mirrorContextPromise=(async()=>{
+  if(mirrorSuspended||!owner||!serverFilesAvailable())throw Error('Sign in to use your files.');
+  if(mirrorSession!==session){closeAccountMirror();mirrorSession=session;}
+  if(!mirrorContextPromise){const generation=mirrorGeneration;mirrorContextPromise=(async()=>{
     const [server,module,context]=await Promise.all([serverFileContext(),import('./storage/browser/mirror.mjs'),import('./storage/browser/account-context.mjs')]);
-    if(currentSession!==session||signedInSubject()!==owner)throw Error('Account changed. Reopen your files.');
+    if(generation!==mirrorGeneration||currentSession!==session||signedInSubject()!==owner)throw Error('Account changed. Reopen your files.');
     const files=context.createAccountFileMirror({issuer:identityConfig.identity.issuer,owner,server:server.files,valid:server.valid,storage:identityConfig.fileStorage??null});
     mirrorInstance=files;
     // The browser decides whether to grant persistent storage; no guarantee.
     navigator.storage?.persist?.().catch(()=>{});files.sync().catch(()=>{});
     return {owner,files,valid:server.valid,path:module.filePath,name:module.fileName};
-  })().catch(error=>{if(mirrorSession===session)mirrorContextPromise=null;throw error;});
+  })().catch(error=>{if(generation===mirrorGeneration&&mirrorSession===session)mirrorContextPromise=null;throw error;});}
   return mirrorContextPromise;
 }
-function startMirror(){if(signedInSubject()&&serverFilesAvailable())mirrorFileContext().catch(console.error);else{mirrorInstance?.close();mirrorInstance=null;mirrorContextPromise=null;mirrorSession=null;}}
+function startMirror(){mirrorSuspended=false;if(signedInSubject()&&serverFilesAvailable())mirrorFileContext().catch(console.error);else closeAccountMirror();}
 // The v86 home is an in-memory 9p filesystem. It is not the account mirror.
 async function guestFileContext(){
  const owner=signedInSubject(),session=currentSession,emulator=guestFiles.emulator;
