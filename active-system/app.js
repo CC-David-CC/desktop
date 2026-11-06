@@ -214,7 +214,7 @@ const applicationDisplayNames=Object.freeze({
   'arduino-simulator':['Arduino Simulator','Arduino Simulator (AVR8js)'],
   'pico-simulator':['Pico Simulator','Pico Simulator (RP2040js)'],
   circuitjs:['Circuit Simulator','Circuit Simulator (CircuitJS)'],
-  jsketcher:['jSketcher','Parametric CAD (jSketcher)'],
+  jsketcher:['jSketcher','CAD Modeler (JSketcher inspired)'],
   'electronics-design':['Electronics Design','Electronics Design (designElectronics)'],
   'digital-logic':['Digital Logic','Digital Logic Simulator (DigitalJS)'],
   'embroidery-studio':['Embroidery Studio','Embroidery Studio (StitchFoundry)'],
