@@ -556,10 +556,17 @@ class Desktop {
     try{const info=await (await deviceCacheModule).deviceStorageInfo();if(popup.isConnected)status.textContent='This domain uses approximately '+Math.round((info.usage||0)/1048576)+' MiB of the browser’s estimated '+Math.round((info.quota||0)/1048576)+' MiB allowance. '+(info.persistent?'Storage is persistent.':'Storage is currently best effort.')+(info.updateWaiting?' An app update will activate after existing tabs close.':'');}catch(error){if(popup.isConnected)status.textContent=error.message;}
   }
   requestWindowClose(w) {
-    const pendingCalculator=()=>{if(w.app==='calculator'&&w.calculator?.saving){feedback('Wait for the Calculator file operation to finish before closing.');return true;}return false;};
-    if(pendingCalculator())return;
+    // The mounted operation owns local commit/acknowledgement, not the app's
+    // dirty flag or peer-derived busy state. Forced disposal remains separate.
+    const pendingLocalWrite=()=>{
+      const operations=this.root.querySelector(`[data-window="${w.id}"]`)?.appView?.documentOperations;
+      const operation=operations?.state;
+      if(operation?.phase==='local-write'&&operation.kind!==null&&!operation.disposed){feedback('Wait for the file to finish saving on this device before closing.');return true;}
+      return false;
+    };
+    if(pendingLocalWrite())return;
     const dirty=()=>windowHasChanges(w);
-    const close=()=>{if(!this.windows.includes(w)||pendingCalculator())return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);if(this.active===w.id)this.active=null;this.render();};
+    const close=()=>{if(!this.windows.includes(w)||pendingLocalWrite())return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);if(this.active===w.id)this.active=null;this.render();};
     if(!dirty()){close();return;}
     if(w.closeDialog?.isConnected)return;
     const dialog=document.createElement('dialog');dialog.className='codi-confirm-dialog';dialog.setAttribute('aria-labelledby','codi-close-title-'+w.id);dialog.setAttribute('aria-describedby','codi-close-message-'+w.id);
