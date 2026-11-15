@@ -37,7 +37,15 @@ export function mount({desktop, authority, displayName = '', onSignOut}) {
     titlebar.append(title, controls); win.append(titlebar); area.append(win);
     const content = node('div', 'webos-window-content', 'Loading…'); win.append(content);
     const record = {element: win, controller, view: null, phase: 'loading', detach: null}; mounts.set(w.id, record);
-    record.detach = desktop.attachWindow(w.id, {dispose: () => remove(w.id), requestClose: async () => {
+    record.detach = desktop.attachWindow(w.id, {dispose: () => remove(w.id),
+      inspect: () => {
+        if (record.phase !== 'ready' || typeof record.view?.inspect !== 'function') throw Error('Application inspection is not ready.');
+        return record.view.inspect();
+      },
+      execute: (request, authority) => {
+        if (record.phase !== 'ready' || typeof record.view?.execute !== 'function') throw Error('Application operations are not ready.');
+        return record.view.execute(request, authority);
+      }, requestClose: async () => {
       if (record.phase === 'loading') return true;
       if (record.view?.requestClose) return await record.view.requestClose();
       if (record.view?.inspect?.().dirty) { failure(Error('This application has unsaved changes. Save or discard them before closing.')); return false; }

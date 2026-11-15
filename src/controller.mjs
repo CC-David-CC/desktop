@@ -51,7 +51,51 @@ export function createDesktopController({sessionId, accountId, applications, aut
       } finally { if (!disposed) { w.closing = false; changed(); } }
     }
   });
+  const currentApplication = (instanceId, lifecycle) => !disposed && windows.has(instanceId) && !windows.get(instanceId).closing && hooks.get(instanceId) === lifecycle;
+  async function applicationOperation(request, authority, operation) {
+    check();
+    if (authority === undefined || authority === null) throw Error('Explicit application caller required.');
+    if (!request || typeof request !== 'object' || Array.isArray(request)) throw Error('Explicit current application target required.');
+    let captured, metadata;
+    try {
+      captured = structuredClone(request);
+      const pending = [captured], seen = new WeakSet(); let fields = 0;
+      while (pending.length) {
+        const value = pending.pop();
+        if (typeof value === 'number' && !Number.isFinite(value)) throw TypeError();
+        if (!value || typeof value !== 'object' || seen.has(value)) continue;
+        seen.add(value);
+        if (typeof SharedArrayBuffer !== 'undefined' && (value instanceof SharedArrayBuffer || (ArrayBuffer.isView(value) && value.buffer instanceof SharedArrayBuffer))) throw TypeError();
+        if (value instanceof Blob || value instanceof ArrayBuffer || ArrayBuffer.isView(value)) continue;
+        if (!Array.isArray(value) && ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw TypeError();
+        for (const child of Object.values(value)) { if (++fields > 65536) throw TypeError(); pending.push(child); }
+      }
+      metadata = JSON.stringify(captured);
+    }
+    catch { throw TypeError('Bounded cloneable application request required.'); }
+    if (typeof metadata !== 'string' || metadata.length > 65536) throw TypeError('Application request metadata too large.');
+    const allowed = operation === 'application.execute' ? ['desktopId', 'sessionId', 'instanceId', 'resourceId', 'request'] : ['desktopId', 'sessionId', 'instanceId', 'resourceId'];
+    if (Object.keys(captured).some(key => !allowed.includes(key)) || captured.desktopId !== id || captured.sessionId !== sessionId || typeof captured.instanceId !== 'string' || captured.resourceId !== 'view:' + captured.instanceId) throw Error('Explicit current desktop, session and view resource target required.');
+    if (operation === 'application.execute' && (!captured.request || typeof captured.request !== 'object' || Array.isArray(captured.request) || captured.request.instanceId !== captured.instanceId || captured.request.sessionId !== sessionId)) throw Error('Application command target must match its live view target.');
+    const w = target(captured.instanceId), lifecycle = hooks.get(w.id), method = operation === 'application.inspect' ? 'inspect' : 'execute';
+    if (!lifecycle || typeof lifecycle[method] !== 'function' || !currentApplication(w.id, lifecycle)) throw Error('Application view operation unavailable.');
+    const decision = Object.freeze({desktopId: id, sessionId, accountId, instanceId: w.id, resourceId: captured.resourceId, appId: w.appId, operation,
+      request: operation === 'application.execute' ? structuredClone(captured.request) : null});
+    if (await authorize(authority, decision) !== true) throw Error('Application operation denied.');
+    check();
+    if (!currentApplication(w.id, lifecycle)) throw Error('Application view changed while authorization was pending.');
+    // The component remains the sole owner of its live state and operations.
+    // Structured cloning preserves immutable Blob input for explicit uploads.
+    const result = await (method === 'inspect' ? lifecycle.inspect() : lifecycle.execute(captured.request, authority));
+    if (!currentApplication(w.id, lifecycle)) {
+      if (method === 'execute') throw Object.assign(Error('Application view changed while the command was pending; verify its outcome before retrying.'), {outcome: 'unknown'});
+      throw Error('Application view changed while inspection was pending.');
+    }
+    return result;
+  }
   return Object.freeze({inspect,
+    inspectApplication(request, authority) { return applicationOperation(request, authority, 'application.inspect'); },
+    executeApplication(request, authority) { return applicationOperation(request, authority, 'application.execute'); },
     subscribe(listener) { check(); listeners.add(listener); return () => listeners.delete(listener); },
     async execute(request, authority) {
       check();
@@ -64,8 +108,18 @@ export function createDesktopController({sessionId, accountId, applications, aut
     attachView() { check(); if (viewAttached) throw Error('This Desktop already has a mounted view.'); viewAttached = true; return () => { viewAttached = false; }; },
     application(appId) { check(); return apps.get(appId); },
     attachWindow(windowId, lifecycle) {
-      check(); target(windowId); if (hooks.has(windowId)) throw Error('Window already has a view.'); hooks.set(windowId, lifecycle);
-      return () => { if (hooks.get(windowId) === lifecycle) hooks.delete(windowId); };
+      check(); target(windowId); if (hooks.has(windowId)) throw Error('Window already has a view.');
+      if (!lifecycle || typeof lifecycle !== 'object') throw TypeError('Application lifecycle callbacks required.');
+      const owned = {};
+      for (const name of ['dispose', 'requestClose', 'inspect', 'execute']) {
+        const callback = lifecycle[name];
+        if (callback !== undefined && typeof callback !== 'function') throw TypeError('Application lifecycle callbacks required.');
+        owned[name] = callback;
+      }
+      // Replacing callbacks requires detaching the view, which invalidates
+      // authorization decisions still pending against that view's lifecycle.
+      hooks.set(windowId, Object.freeze(owned));
+      return () => { if (hooks.get(windowId) === owned) hooks.delete(windowId); };
     },
     dispose() {
       if (disposed) return; disposed = true;
