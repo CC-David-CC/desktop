@@ -38,3 +38,5 @@ The parent exposes these same methods on its assembly handle. Its current
 authorizer still accepts only the in-page human capability. Tests using
 synthetic caller capabilities establish routing and shared live state, not
 Accounts-issued delegation or an authenticated remote agent transport.
+
+The original launcher icons, wallpaper and captured license files are retained with history; see [legacy visual assets](LEGACY-VISUAL-ASSETS.md). They are not enabled in the current renderer.

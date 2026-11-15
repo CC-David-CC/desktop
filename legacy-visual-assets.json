@@ -1,0 +1,773 @@
+{
+  "sourceCommit": "4f72ea86928666189b32f6f05c2c697a37341d06",
+  "mechanicalBaseline": "3b2793b1b4b09aa77eff2131cf111c8e5bd3a90a",
+  "sourceAssets": [
+    {
+      "path": "active-system/assets/icons/000.png",
+      "sourcePath": "active-system/assets/icons/000.png",
+      "blob": "bdbf2305447e9c6ea524ffa0273a4bf263f23855",
+      "mode": "100644",
+      "bytes": 2383,
+      "sha256": "831f0e919dac9f280d5ae239ac25622967d17183b63b24f7f5f2a986b306e44c",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/001.png",
+      "sourcePath": "active-system/assets/icons/001.png",
+      "blob": "acc73c3a8b94e1570c8edf297e2094e53f480a86",
+      "mode": "100644",
+      "bytes": 686,
+      "sha256": "54ddde0a4e0210ba7718cc0fa5ac9f26ca6b8b3a4d0ac9ae08d0f8433be2fee5",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/002.png",
+      "sourcePath": "active-system/assets/icons/002.png",
+      "blob": "5ecc0bb8914f91cfbb8d0f03ddf2d9d322846a65",
+      "mode": "100644",
+      "bytes": 767,
+      "sha256": "3091376f46e6f835bf680e17d306bd02c379f4f4ef02cffedfe021eb88b0e106",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/003.png",
+      "sourcePath": "active-system/assets/icons/003.png",
+      "blob": "5e80d7cefd867386125d07f62c48050d91afc20d",
+      "mode": "100644",
+      "bytes": 3804,
+      "sha256": "b3e79d7ab839f77a9a09a5f7fa4727aa3dff24d1ec187456900c038a2a04063e",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/004.png",
+      "sourcePath": "active-system/assets/icons/004.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/005.png",
+      "sourcePath": "active-system/assets/icons/005.png",
+      "blob": "1a863c8de72422fd4f5b32ea22fd83ffea37cd5c",
+      "mode": "100644",
+      "bytes": 1364,
+      "sha256": "46b33669ea5f7428f6db83383b4c373718dc9ea33ac50dc112f039e078537b8e",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/006.png",
+      "sourcePath": "active-system/assets/icons/006.png",
+      "blob": "2d3752fdcfd1fd69f0e4dbbc394cea7ddc4c3421",
+      "mode": "100644",
+      "bytes": 1294,
+      "sha256": "70c8a200427b67df5bf2e2e7300227f9a5aad44ac4d8e478f7a0c4e96ef20c0c",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/007.png",
+      "sourcePath": "active-system/assets/icons/007.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/008.png",
+      "sourcePath": "active-system/assets/icons/008.png",
+      "blob": "e69df1cad39bd2573b746b20f4f356d7c1d4c19f",
+      "mode": "100644",
+      "bytes": 2943,
+      "sha256": "8e85f12c014f022e929747be08c0cf268bb7b2b2d3d2e4f9cc08d2e79a44573a",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/009.png",
+      "sourcePath": "active-system/assets/icons/009.png",
+      "blob": "cd04df71891e2de445af5ca4bd46078b73a46c6d",
+      "mode": "100644",
+      "bytes": 2049,
+      "sha256": "a294e0fb40d5dedafe604f170101fe48839f285c975f7894c0318458fd6f92d4",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/010.png",
+      "sourcePath": "active-system/assets/icons/010.png",
+      "blob": "df388f04e0ebaded91ef031f2c27744f98b07b83",
+      "mode": "100644",
+      "bytes": 1901,
+      "sha256": "9e0cb0af0b68be94043b0d932680f55e8f26be9410d22b394a5b3d6b2ccd8516",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/011.png",
+      "sourcePath": "active-system/assets/icons/011.png",
+      "blob": "a748beedf2ce90fd3b16bda679b62a378d83abb4",
+      "mode": "100644",
+      "bytes": 1335,
+      "sha256": "4fe0764c2782d295197fe370fb7b65ad5fa59496fff41a8e29592733be4e97db",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/012.png",
+      "sourcePath": "active-system/assets/icons/012.png",
+      "blob": "b0acc9456a3e5b53b82cd42b7403ddc7542f59f2",
+      "mode": "100644",
+      "bytes": 1251,
+      "sha256": "a2a597616c4bb4f77e9bbd62c27c089cf07dd5dfe40e328e1b41bc6ff25a7610",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/013.png",
+      "sourcePath": "active-system/assets/icons/013.png",
+      "blob": "89f1e8210444f946884fcd4517dd92fa380e6edd",
+      "mode": "100644",
+      "bytes": 4348,
+      "sha256": "0b0b7016230f15d62adecc010dfd7c31d28ec238adf852e8845b18642a83bb25",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/014.png",
+      "sourcePath": "active-system/assets/icons/014.png",
+      "blob": "b5773a6d1e1e88953cdc75d311ae136430cdca46",
+      "mode": "100644",
+      "bytes": 697,
+      "sha256": "876f7fe5fdd8d48a0d09c06a1183f8c92d397d1ea4c189590d0e679263da1c7e",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/015.png",
+      "sourcePath": "active-system/assets/icons/015.png",
+      "blob": "e9129a95937e3c394d332e76ab49c18b5664563b",
+      "mode": "100644",
+      "bytes": 1006,
+      "sha256": "fc0e3e0d3f478af84769371e98a46433265523842bfaabded64ef8917bfd4e2e",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/016.png",
+      "sourcePath": "active-system/assets/icons/016.png",
+      "blob": "df9ac527f32747b7b1bfbeef2eb8894a894360f7",
+      "mode": "100644",
+      "bytes": 1369,
+      "sha256": "64b888ef20afa12950c03a93a1f764c2fc442ae3afe4c542c4aed26c534d1042",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/017.png",
+      "sourcePath": "active-system/assets/icons/017.png",
+      "blob": "72a1f5d63160979de12311c8c905f2446520b9e1",
+      "mode": "100644",
+      "bytes": 1748,
+      "sha256": "2f948fce963c6207e4f51ce56f9b68d51451439abe6fb687e24e42ebc2bda6bf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/018.png",
+      "sourcePath": "active-system/assets/icons/018.png",
+      "blob": "eec87c566527cc18c3bb12c5a19848a9e504c805",
+      "mode": "100644",
+      "bytes": 749,
+      "sha256": "3dee9f6cb3740ce477d5d982a2ec4090c0be5b117ee8be14cb9df050439f895f",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/019.png",
+      "sourcePath": "active-system/assets/icons/019.png",
+      "blob": "36e719a702ef52ac7bfec66850023135a3aae10e",
+      "mode": "100644",
+      "bytes": 2504,
+      "sha256": "a446a3b1a15d475c2d5b259fa958bdf037a4f4b7597d714a1d384766c4222e5b",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/020.png",
+      "sourcePath": "active-system/assets/icons/020.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/021.png",
+      "sourcePath": "active-system/assets/icons/021.png",
+      "blob": "beb62d293a8d1dd35ced789c7cec5de71ffa4713",
+      "mode": "100644",
+      "bytes": 1799,
+      "sha256": "321b138416338a423a4e5ba39c1571321893250c76f613933995d371737c3c0f",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/022.png",
+      "sourcePath": "active-system/assets/icons/022.png",
+      "blob": "2514a8d8e83d2036e8ad6751494330a32e58a3f3",
+      "mode": "100644",
+      "bytes": 1311,
+      "sha256": "d4a09aeddfb9e28b4c627732006540bf5026ca9d971f3ae7698554e5c3244b7f",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/023.png",
+      "sourcePath": "active-system/assets/icons/023.png",
+      "blob": "49754d5dd3a7f47db375515c67ebddba915b2ece",
+      "mode": "100644",
+      "bytes": 2692,
+      "sha256": "a2a289ea951926818ba8fe95212cee89d675591a67354be5f810f1cea1e32515",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/024.png",
+      "sourcePath": "active-system/assets/icons/024.png",
+      "blob": "d7397ec07efea8c0a8d4e97940724f01ce20e898",
+      "mode": "100644",
+      "bytes": 3485,
+      "sha256": "a80d7fdb7e32d712fb32da67a62ab2068602d076bf0b8d6b09d99f1f88a6b84a",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/025.png",
+      "sourcePath": "active-system/assets/icons/025.png",
+      "blob": "10f4abf3e72795cae7bc55d8bb35b7522b415289",
+      "mode": "100644",
+      "bytes": 1531,
+      "sha256": "28031d0ddf45a510d4aa28feeb7a9b500e8cdd4325b0a0c097652a9f60079441",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/026.png",
+      "sourcePath": "active-system/assets/icons/026.png",
+      "blob": "6c5b000f1f33e9d4f5309ed7a09e5f321fee28a7",
+      "mode": "100644",
+      "bytes": 2070,
+      "sha256": "003e0be6a81f4ef03e088988344773856f0313c341ed10676babbc3f47aca53c",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/027.png",
+      "sourcePath": "active-system/assets/icons/027.png",
+      "blob": "c5d406490a270f47c7a7fff206f5dc8a6e94824c",
+      "mode": "100644",
+      "bytes": 559,
+      "sha256": "5c5f5dda5891b14601eb0d820fb929518eb5778aba4f7fc6da093372b006e770",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/028.png",
+      "sourcePath": "active-system/assets/icons/028.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/029.png",
+      "sourcePath": "active-system/assets/icons/029.png",
+      "blob": "d642ab5687adce79efa333fc4bef2e50deea2459",
+      "mode": "100644",
+      "bytes": 2708,
+      "sha256": "f3bdac2125a3f95f1cd5b4ac29c8499310ac742d5dda504a3051dcf22817d561",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/030.png",
+      "sourcePath": "active-system/assets/icons/030.png",
+      "blob": "700bbdacf363dea8747e95fc1661a0bfef9cd143",
+      "mode": "100644",
+      "bytes": 2089,
+      "sha256": "85a1bcf2b4cbf024cee1f70a64130c27094ac46c09809617b2f8cbc27f85f7a0",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/031.png",
+      "sourcePath": "active-system/assets/icons/031.png",
+      "blob": "264d569254af18825898cacfd2cba25665b0f3ed",
+      "mode": "100644",
+      "bytes": 2829,
+      "sha256": "8a24d3e9a026a061c88fc5d3f48fcd4858cd8fd959ec0e3c6cde626074bf57d5",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/032.png",
+      "sourcePath": "active-system/assets/icons/032.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/033.png",
+      "sourcePath": "active-system/assets/icons/033.png",
+      "blob": "a6424d2ddaf005ac7b7cfacaec80be2bba14ee25",
+      "mode": "100644",
+      "bytes": 1360,
+      "sha256": "cf812eb8a9c6fda0ea561dbab8598e8f7944ea291420cbe4c7f061b233f2eea0",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/034.png",
+      "sourcePath": "active-system/assets/icons/034.png",
+      "blob": "856849fe359662eeca3f646eb658eb141c083733",
+      "mode": "100644",
+      "bytes": 4469,
+      "sha256": "53a9746e840d9584cfb2fba9d0ca33510adcba8614dcebda564d05cd7be84d33",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/035.png",
+      "sourcePath": "active-system/assets/icons/035.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/036.png",
+      "sourcePath": "active-system/assets/icons/036.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/037.png",
+      "sourcePath": "active-system/assets/icons/037.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/038.png",
+      "sourcePath": "active-system/assets/icons/038.png",
+      "blob": "f564cf4feba3e8e96c4173fad0e12904cf055f8c",
+      "mode": "100644",
+      "bytes": 2444,
+      "sha256": "ad9d55d297f68f3ce7376bef87bbe87214713a1e9c4c3af3068499d82ac42ab3",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/039.png",
+      "sourcePath": "active-system/assets/icons/039.png",
+      "blob": "7e7e0dfb33507fdef769d19dd741c5942be9bb7d",
+      "mode": "100644",
+      "bytes": 2497,
+      "sha256": "68ec960c27ec1c26733f608ce1355a4bd2e5602d5b47479dd7f46a4d741adec7",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/040.png",
+      "sourcePath": "active-system/assets/icons/040.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/041.png",
+      "sourcePath": "active-system/assets/icons/041.png",
+      "blob": "00d73ca5d146b3ef742d4927e949c9e9aaa95d3d",
+      "mode": "100644",
+      "bytes": 2671,
+      "sha256": "915b866dfeac540a78f7f1bf4a6f1232a40a22a8c79114887cbe49d054d73308",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/042.png",
+      "sourcePath": "active-system/assets/icons/042.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/043.png",
+      "sourcePath": "active-system/assets/icons/043.png",
+      "blob": "cee7f06b03bb5f3c805fd7b619d77ff97616049a",
+      "mode": "100644",
+      "bytes": 4135,
+      "sha256": "be9f821a0fec595118f3e507245e2c74083355b1e61d18db4e229e76b4f3f1aa",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/044.png",
+      "sourcePath": "active-system/assets/icons/044.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/045.png",
+      "sourcePath": "active-system/assets/icons/045.png",
+      "blob": "082b62e146dd6326893554261f8c6283ab963b6c",
+      "mode": "100644",
+      "bytes": 5909,
+      "sha256": "d9f79a4f515513620f83cb8d84ddafc80ed9b19a8db948b57c4bf3e8216fa1ac",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/046.png",
+      "sourcePath": "active-system/assets/icons/046.png",
+      "blob": "d05caf52d3fb6921667265582f5ffb54c46de24e",
+      "mode": "100644",
+      "bytes": 3703,
+      "sha256": "34ef0b20ffa57ade621ef190b895564bd5c901a10dfe6c3188dda7b590c115f5",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/047.png",
+      "sourcePath": "active-system/assets/icons/047.png",
+      "blob": "909c7850cb49544eddab215a33262688d509fe7e",
+      "mode": "100644",
+      "bytes": 4847,
+      "sha256": "0ca72773be4bac6ca843df6c6f7de219962ef0a83f724f63c69c2ffffc1d6305",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/048.png",
+      "sourcePath": "active-system/assets/icons/048.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/049.png",
+      "sourcePath": "active-system/assets/icons/049.png",
+      "blob": "3e7edbd7fbeb1ae743ced179edd8f4a4f2076c72",
+      "mode": "100644",
+      "bytes": 1851,
+      "sha256": "91ee78482e603c4a309cbaeaa095e0dbaab7f06ce39810cfc45613e9296457ee",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/050.png",
+      "sourcePath": "active-system/assets/icons/050.png",
+      "blob": "5e3078ae107adabf3c9ff027f472bd42cb99d89b",
+      "mode": "100644",
+      "bytes": 2136,
+      "sha256": "22e5e0785ea5e2b231b6839797e28f9ad988f70731e8315b292506b567c9e939",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/051.png",
+      "sourcePath": "active-system/assets/icons/051.png",
+      "blob": "d6bfc6e757dfb4146e56bdf272e550c82be7d3c3",
+      "mode": "100644",
+      "bytes": 2363,
+      "sha256": "f35925ecbbe584669729e8fe87388d7f13b1856f321fc2c86616edd638491aa6",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/052.png",
+      "sourcePath": "active-system/assets/icons/052.png",
+      "blob": "dc973a28c927a87d7e5b55bcfc7e8192b85103d4",
+      "mode": "100644",
+      "bytes": 2327,
+      "sha256": "4e29f0f779598b6f4bb712d70dbd4454e2fb43bf424474f8ca9b07253a914dd5",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/053.png",
+      "sourcePath": "active-system/assets/icons/053.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/054.png",
+      "sourcePath": "active-system/assets/icons/054.png",
+      "blob": "655e9c328ded73da10fd4502602ffd92384ebca3",
+      "mode": "100644",
+      "bytes": 626,
+      "sha256": "b29910448b548a59d6a2b86b6dd9d923de157da062cf34fde8ce659a04b4c161",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/055.png",
+      "sourcePath": "active-system/assets/icons/055.png",
+      "blob": "62c981b1acc01d9b0c05fdc684a8d72e03549924",
+      "mode": "100644",
+      "bytes": 958,
+      "sha256": "e82faec9c422d03b3017a1d3318492fc1d0d930383afa06c8158c60c129ef3dd",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/056.png",
+      "sourcePath": "active-system/assets/icons/056.png",
+      "blob": "b9e891e6a880408ee7dac5273063535f6b616a35",
+      "mode": "100644",
+      "bytes": 2695,
+      "sha256": "17d6048cc63f69ca57a23e5ab543d8fccea91aab2208ae77767ab35ae0aad8f4",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/057.png",
+      "sourcePath": "active-system/assets/icons/057.png",
+      "blob": "f9a6fff1f583263845296cc7320994588a8eafb4",
+      "mode": "100644",
+      "bytes": 2479,
+      "sha256": "8f030708c3c7d9cfb3c9082fb0fa84ffed06fcb2d182b50edb486891c16ad712",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/058.png",
+      "sourcePath": "active-system/assets/icons/058.png",
+      "blob": "7e05e252ab62857e01d1cf8860f00af3000bd952",
+      "mode": "100644",
+      "bytes": 2991,
+      "sha256": "88043ced15c1be4b7b274d3eaa9d9dfe2000b8cc9da9590e2888c1ff8b027212",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/059.png",
+      "sourcePath": "active-system/assets/icons/059.png",
+      "blob": "9db08ce010ae4f825c0ba3eef018342dd02199ef",
+      "mode": "100644",
+      "bytes": 1346,
+      "sha256": "413af0e594c7b95ac82a590aa1359040bb6f4ca761a42cd6ebde3d1ca4f529fe",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/060.png",
+      "sourcePath": "active-system/assets/icons/060.png",
+      "blob": "b942e4ba2c0179d908f241fedc1c4cb5f8fa6d87",
+      "mode": "100644",
+      "bytes": 4068,
+      "sha256": "958ef32b08588919292d87895dd463da7931644237d4ab751f1a57911202db6b",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/061.png",
+      "sourcePath": "active-system/assets/icons/061.png",
+      "blob": "55c9dbdb59470d4d5e644a91755ed3deccda7380",
+      "mode": "100644",
+      "bytes": 6173,
+      "sha256": "eaa4777532cdabb823bfd7d61d595a0fd32ee4305de06046cb30eec9b8374531",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/062.png",
+      "sourcePath": "active-system/assets/icons/062.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/063.png",
+      "sourcePath": "active-system/assets/icons/063.png",
+      "blob": "7614336ff3d034d2def4630a8b3e63784c1f7c26",
+      "mode": "100644",
+      "bytes": 1663,
+      "sha256": "61bf5db57ee38d49fea607f04b426d2bad87dd005fe950117631dbe7fd6b4778",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/064.png",
+      "sourcePath": "active-system/assets/icons/064.png",
+      "blob": "c24e364ff4eb04e14ca54aad9960d6189b9db307",
+      "mode": "100644",
+      "bytes": 1939,
+      "sha256": "6ac302ac916f0c6c2934c0d7e86fb7b077f1269dab9cad50eb1ef37f86433bf5",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/065.png",
+      "sourcePath": "active-system/assets/icons/065.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/066.png",
+      "sourcePath": "active-system/assets/icons/066.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/067.png",
+      "sourcePath": "active-system/assets/icons/067.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/068.png",
+      "sourcePath": "active-system/assets/icons/068.png",
+      "blob": "a0407bd18a3ad56550226f3a06784472eafa7244",
+      "mode": "100644",
+      "bytes": 710,
+      "sha256": "d03f7dd5c0c6204c019860260976e393e6b2e04b65455c9378b629bc67ec0dc1",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/069.png",
+      "sourcePath": "active-system/assets/icons/069.png",
+      "blob": "13c8dcaeec600bb4a10c9f6fc61b3e3c93f068f7",
+      "mode": "100644",
+      "bytes": 1052,
+      "sha256": "8035172dd429d35e9abe74bcae1f0663d8c1a7159b2c560ff45000e8b84701e4",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/070.png",
+      "sourcePath": "active-system/assets/icons/070.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/071.png",
+      "sourcePath": "active-system/assets/icons/071.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/072.png",
+      "sourcePath": "active-system/assets/icons/072.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/icons/073.png",
+      "sourcePath": "active-system/assets/icons/073.png",
+      "blob": "26f8794fd89c38f231a4c17c7a97dd0b212b1c44",
+      "mode": "100644",
+      "bytes": 776,
+      "sha256": "6e873c1c1b326a1f922d8edc5f34c64b14b08ed8e9999b40bbed34acab6c6fcf",
+      "role": "launcher icon"
+    },
+    {
+      "path": "active-system/assets/licenses/GPL-2",
+      "sourcePath": "active-system/assets/licenses/GPL-2",
+      "blob": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "mode": "100644",
+      "bytes": 18092,
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/GPL-3",
+      "sourcePath": "active-system/assets/licenses/GPL-3",
+      "blob": "f288702d2fa16d3cdf0035b15a9fcbc552cd88e7",
+      "mode": "100644",
+      "bytes": 35149,
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/LGPL-2.1",
+      "sourcePath": "active-system/assets/licenses/LGPL-2.1",
+      "blob": "4362b49151d7b34ef83b3067a8f9c9f877d72a0e",
+      "mode": "100644",
+      "bytes": 26530,
+      "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/adwaita-icon-theme.copyright",
+      "sourcePath": "active-system/assets/licenses/adwaita-icon-theme.copyright",
+      "blob": "4fb6378b9d4062849a780c8888582965f4f6fbc9",
+      "mode": "100644",
+      "bytes": 110653,
+      "sha256": "b8058c6a4e62094c4c4a081b9681b3e67e2ffed995d6b8b5fe43a536745f04ba",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/fonts-dejavu-core.copyright",
+      "sourcePath": "active-system/assets/licenses/fonts-dejavu-core.copyright",
+      "blob": "b3d93a1235a82213fbc451853317c40e62ed9272",
+      "mode": "100644",
+      "bytes": 3859,
+      "sha256": "63d3ba759d12804c5b31a9d5940d855c1820d1f5999e6b0872eb1c7ff045fbc9",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/fonts-noto-core.copyright",
+      "sourcePath": "active-system/assets/licenses/fonts-noto-core.copyright",
+      "blob": "e9dbd010263dc0310e027d02e898786966995c5b",
+      "mode": "100644",
+      "bytes": 5208,
+      "sha256": "075f91382875da1c4b491f1facf2586f55448705133264d98ce15cab6211b125",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/network-manager-gnome.copyright",
+      "sourcePath": "active-system/assets/licenses/network-manager-gnome.copyright",
+      "blob": "cd171542fbbf7c6bb0b3dfc98b8aa913d1cbdd95",
+      "mode": "100644",
+      "bytes": 2065,
+      "sha256": "353dfdb65147b7b6d0b45219337494cce01182e8eea586bca6396139e6ddc97c",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/xfce4-panel.copyright",
+      "sourcePath": "active-system/assets/licenses/xfce4-panel.copyright",
+      "blob": "d38211b77117b8d58e8d5de5ee4f36425e10fdae",
+      "mode": "100644",
+      "bytes": 5465,
+      "sha256": "5b4e3fc5d76feb1794709fe4ceb34ca67d9dd78b410a0c8639691e1af46fb462",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/xfce4-terminal.copyright",
+      "sourcePath": "active-system/assets/licenses/xfce4-terminal.copyright",
+      "blob": "c73b31162437170fd086151bd2ebcad6f86a7e90",
+      "mode": "100644",
+      "bytes": 2220,
+      "sha256": "3dbe6218364f9a2c9a11032d135f7eb357ef485a731f18a1646b86538e9abda7",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/licenses/xfdesktop4-data.copyright",
+      "sourcePath": "active-system/assets/licenses/xfdesktop4-data.copyright",
+      "blob": "a2d8ba757627cb6daac8d30db149a13092aca1ce",
+      "mode": "100644",
+      "bytes": 1899,
+      "sha256": "4a69c0bfbf2ce99089b441e07b9e4e6555cee4cb171213872ca4ee8c71680d50",
+      "role": "retained license/copyright text"
+    },
+    {
+      "path": "active-system/assets/wallpaper.jpg",
+      "sourcePath": "active-system/assets/wallpaper.jpg",
+      "blob": "c35533c23d3c96897018a909348e91f3f138ca35",
+      "mode": "100644",
+      "bytes": 197011,
+      "sha256": "12ef92faa671ad1677d9669810e2382d46f66392ae91bfb9d212bfc9030efbb8",
+      "role": "legacy wallpaper"
+    }
+  ],
+  "verification": "PNG chunks/CRCs and decoded scanlines verified for every unique selected historical PNG; representative PNGs and current JPEG decoded/viewed; all current file hashes/modes match source.",
+  "limits": "Original license/copyright texts retained. Per-file upstream origin/license mapping and release notice completeness remain review gates; no new license grant or theme fidelity claimed. These legacy assets are not enabled in current src/ renderer."
+}
