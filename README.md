@@ -1,0 +1,9 @@
+# Desktop
+
+Owns window identities, focus, workspaces, geometry, minimize/maximize and close admission. The preserved `active-system/` baseline retains the original full Desktop history and implementation; it is reference source and is not loaded by the new package. Login, account authority, file persistence and guest Linux have separate owners.
+
+`@webos/desktop` exposes `createDesktopController` and synchronous `mount({desktop,authority,...}) -> {element,dispose,ready,inspect,execute}`. Supply explicit account/session identities, an application catalog and an authorizer. Operations carry exact `desktopId` and `sessionId`; windows have independent opaque IDs. The authorizer receives the caller's authority, never an actor-kind string treated as proof. The parent currently binds an in-page human authority. Delegated agent authorization is pending; same-origin code remains trusted.
+
+Apps mount synchronously with instance/session/resource identity and an abort signal. Their explicit `ready` promise controls loading failure. Their optional `requestClose()` must return true before closing; dirty apps without it stay open. Failed/cancelled close requests retain the view. App documents/services remain their owners' responsibility. Removing Desktop's view does not sign out; explicit controller disposal ends its window session. Only one Desktop view mounts for a controller at once.
+
+`node --test tests/controller.test.mjs` checks authorization/target refusal, disposal while authorization is pending, independent windows, and unsaved-close cancellation/failure. The parent actual-browser test covers the Login/Desktop/Files composition. Old tiling, roll-up, layout recovery, voice/keyboard policy, menus and full-suite registrations remain preserved and require deliberate port/fidelity tests. Current window controls do not establish full old Desktop parity.
