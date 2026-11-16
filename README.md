@@ -1,42 +1,27 @@
-# Desktop
+# Desktop / Workspace viewer source
 
-Owns window identities, focus, workspaces, geometry, minimize/maximize and close admission. The preserved `active-system/` baseline retains the original full Desktop history and implementation; it is reference source and is not loaded by the new package. Login, account authority, file persistence and guest Linux have separate owners.
+This independent repository owns the existing Desktop/Workspace viewer, as shown on beta.ksu.codes. It is source organized for future development. No desktop rewrite, recoloring or replacement is intended.
 
-`@webos/desktop` exposes `createDesktopController` and synchronous `mount({desktop,authority,...}) -> {element,dispose,ready,inspect,execute}`. Supply explicit account/session identities, an application catalog and an authorizer. Operations carry exact `desktopId` and `sessionId`; windows have independent opaque IDs. The authorizer receives the caller's authority, never an actor-kind string treated as proof. The parent currently binds an in-page human authority. Delegated agent authorization is pending; same-origin code remains trusted.
+The source lives under `active-system/`, keeping its original paths and bytes:
 
-Apps mount synchronously with instance/session/resource identity and an abort signal. Their explicit `ready` promise controls loading failure. Their optional `requestClose()` must return true before closing; dirty apps without it stay open. Failed/cancelled close requests retain the view. App documents/services remain their owners' responsibility. Removing Desktop's view does not sign out; explicit controller disposal ends its window session. Only one Desktop view mounts for a controller at once.
+- `index.html`: existing page entry.
+- `bootstrap.js`: existing script loading and worker-release handling.
+- `app.js`: existing Desktop/Workspace viewer, windows, rail, menus and account presentation.
+- `desktop-apps.js`: existing app hosting/operation glue.
+- `reference.js`: existing menu, icon and reference settings.
+- `style.css`: existing presentation, including dark workspace/rail and bottom APPs placement.
+- `assets/`: existing icons, wallpaper and captured notices.
 
-`node --test tests/*.test.mjs` checks authorization/target refusal, disposal while authorization is pending, independent windows, unsaved-close cancellation/failure and live application routing. The parent actual-browser tests cover composition and public-view operations. Old tiling, roll-up, layout recovery, voice/keyboard policy, menus and full-suite registrations remain preserved and require deliberate port/fidelity tests. Current window controls do not establish full old Desktop parity.
+All92 retained source/asset files were compared byte-for-byte with the original Desktop-Preview source during this correction. None was edited, copied anew or replaced. The source was already extracted with history; its previous description as merely unused reference material was incorrect.
 
-## Live application operations
+The unsolicited replacement formerly under `src/` and its two replacement-only test files have been removed from this working source tree. No replacement archive or backup was created. Ordinary pre-existing Git history has not been rewritten. The misleading `mount`/controller package exports and replacement test command are removed; the existing classic-script viewer is not falsely advertised as an interchangeable ESM mount implementation.
 
-`inspectApplication(target, caller)` reads a mounted view's public inspection.
-`executeApplication({...target, request}, caller)` forwards a captured application
-request to that same view's public `execute` function with the unchanged caller
-capability. The application's own resource and operation checks still run.
-Desktop does not create another document or file implementation.
+## Existing dependencies and ownership
 
-The target contains exact `desktopId`, `sessionId`, `instanceId` and
-`resourceId: 'view:' + instanceId`. This resource identifies the view for routing;
-the nested command retains the app's document/file resource identity. Its
-instance and session must match the outer target. The authorizer receives
-`application.inspect` or `application.execute`, the owned account ID, app ID and a separate copy
-of the nested request. A role-name string is not a credential.
+This is a source silo, not a claim that opening index.html alone recreates a whole deployed site. The existing bootstrap references `.build/v86/libv86.js` and `terminal.js`; their owners are the v86 engine and Terminal repositories. Existing dynamic imports under `assets/desktop/` refer to Runtime-owned modules; account/file services and application sources remain in their separate repositories. Future assembly must compose those explicit dependencies without copying their ownership into Desktop or rewriting this viewer as part of organization.
 
-Requests are captured before asynchronous permission checks. Structured cloning
-preserves explicit Blob input for operations such as upload; metadata is
-bounded, while file-byte limits remain the owning component's responsibility.
-Shared memory and non-JSON collection types are refused because they do not
-provide the captured JSON metadata/owned-byte contract.
-Callbacks are captured when a view attaches. Detaching/replacing the view,
-closing its window or ending the session invalidates a pending decision. Views
-must be ready to provide their own public methods. Unsupported methods fail
-explicitly. If a command completes after view removal, its result is reported
-as uncertain (`outcome: 'unknown'`); callers must verify before retrying.
+The retained bootstrap can unregister a worker and reload when actually run; it was inspected, not executed in this correction. No website, worker, account state, service or routing was changed. Neither full beta parity nor all old apps running is a source-organization completion gate.
 
-The parent exposes these same methods on its assembly handle. Its current
-authorizer still accepts only the in-page human capability. Tests using
-synthetic caller capabilities establish routing and shared live state, not
-Accounts-issued delegation or an authenticated remote agent transport.
+`legacy/reference-tests/` retains original test source separately from application source. The known original negative-control limitation remains documented in OWNED-REFERENCE-TESTS.md; it has not been made passing by changing assertions.
 
-The original launcher icons, wallpaper and captured license files are retained with history; see [legacy visual assets](LEGACY-VISUAL-ASSETS.md). They are not enabled in the current renderer.
+The previous parent development composition imports the removed replacement interface. It is obsolete and must not be represented as the intended viewer or deployed again. The parent builder now stops before producing that replacement. Future assembly wiring is separate work, not part of this source correction.

@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {".": "./src/index.mjs", "./controller": "./src/controller.mjs"},
-  "scripts": {"test": "node --test tests/*.test.mjs"}
+  "description": "Existing Desktop/Workspace viewer source silo; no replacement implementation.",
+  "webos": {
+    "sourceRoot": "active-system",
+    "entry": "active-system/index.html",
+    "scriptFormat": "classic-scripts",
+    "replacementRemoved": true
+  }
 }
