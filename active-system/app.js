@@ -460,8 +460,21 @@ class Desktop {
     if(win){win.querySelector('.caption-text').textContent=displayedWindowTitle(w);win.setAttribute('aria-label',displayedWindowTitle(w));}
     if(!this.saveLayout())feedback('Your file is saved, but this browser could not remember its window.');
   }
+  activateTextFile(resource){
+    if(resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.length>2048||resource.path.startsWith('/')||resource.path.endsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..'||/[\0\\]/.test(p)))throw Error('Current canonical account file required.');
+    for(const desktop of new Set([this,...surfaces.values()])){
+      const w=desktop.windows.find(w=>w.app==='text'&&w.ownerSub===resource.owner&&w.launchContext?.storage==='account'&&w.launchContext.owner===resource.owner&&w.launchContext.path===resource.path);
+      if(!w)continue;
+      w.rolled=false;w.focusWhenReady=true;desktop.activateWindow(w);
+      const view=desktop.root.querySelector('[data-window="'+w.id+'"]')?.appView;
+      if(view?.focus){w.focusWhenReady=false;view.focus();}
+      return w;
+    }
+    return null;
+  }
   openAccountFile(app,resource){
     if(!['text','wordcraft'].includes(app)||!enabledApp(app)||resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.startsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..')||!/^[0-9a-f]{64}$/.test(resource.sha256))throw Error('An exact account file is required.');
+    if(app==='text'){const existing=this.activateTextFile(resource);if(existing)return existing;}
     const w=this.launch(app,resource.path.split('/').pop()+' — '+(app==='wordcraft'?'WordCraft':'Text Editor'));
     w.launchContext=Object.freeze({version:1,storage:'account',path:resource.path,sha256:resource.sha256,owner:resource.owner});w.ownerSub=resource.owner;this.saveLayout();return w;
   }

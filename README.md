@@ -38,5 +38,16 @@ The app reads current server bytes and reports their actual revision; the old
 layout SHA is not a permanent open precondition. Explicit Files-selected launches
 still carry an exact selected revision, and recovery drafts retain their own
 base revision/conflict checks. Missing/unavailable Text stays identified and
-read-only with Retry in the same app view. Login persistence and general same-file
-activation remain separate work.
+read-only with Retry in the same app view. Login persistence remains separate work.
+
+`activateTextFile` validates the signed-in account and canonical full path, then
+finds the existing Text window through its confirmed launch binding. It restores
+minimized/rolled state, selects the existing workspace and delegates keyboard
+focus to the app. It never reads file bytes, changes the buffer/base revision or
+remounts CodeMirror. Save As and first Save use the same binding path as layout
+persistence; no second resource registry is maintained. Untitled windows and
+different full paths remain independent. A late synchronous lookup before launch
+prevents concurrent Files opens from creating duplicate Text windows. Focus
+requested before attachment/readiness is delivered only while that window is
+still active, avoiding delayed focus theft. WordCraft's internal multi-document
+activation is outside this Text-scoped change.

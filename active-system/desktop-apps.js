@@ -39,6 +39,7 @@ function publicAppContent(id,desktop,w){
       if(!(body instanceof HTMLElement)||!body.classList.contains('window-content'))throw Error('Invalid app view');
       placeholder.replaceWith(body);applyScreenKeyboardPolicy(body);
       const win=body.closest('.window');if(win){win.editorState=w.editor;win.appView=instance;}
+      if(w.focusWhenReady){w.focusWhenReady=false;if(desktop.active===w.id&&desktop.current===w.workspace)instance.focus?.();}
     }catch(error){
       instance?.dispose('Mount failed');
       if(!placeholder.isConnected)return;
