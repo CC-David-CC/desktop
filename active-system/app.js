@@ -12,7 +12,7 @@ const shipped = {
   workspaceLabels: false, volumeButton: false, panelLabelsBold:false
 };
 let settings = {...shipped};
-// Local browser sessions do not restore or persist identity, key, or sizing state.
+// Accounts owns retained sign-in; Desktop keeps only its public projection.
 let resolution = [innerWidth,innerHeight], hitboxes = false;
 const surfaces = new Map();
 const models = new Map();
@@ -835,22 +835,30 @@ function sessionViews(session){
     localKeyFingerprint:{get(){return this.fingerprint;}}
   });
 }
-async function accountSession(mode,username,password){
+async function accountSession(mode,username,password,client=accountServices.createAccountsClient({persistSession:true})){
   if(currentSession)throw Error('Use End session before signing into another account. Your current windows and work remain open.');
   if(!['register','signin'].includes(mode))throw Error('Choose sign in or register.');
-  const client=accountServices.createAccountsClient();
   const state=await client.authenticate({mode,username,password});
+  return accountSessionProjection(client,state);
+}
+async function accountSessionProjection(client,state){
   const authority=client.createFileAuthority();
   const session={public:{sid:state.sessionId,sub:state.accountId,name:state.displayName,kind:'registered',key:authority.publicKey},
     trust:{level:state.trust},fingerprint:await accountServices.thumbprint(authority.publicKey)};
   Object.defineProperty(session.trust,'claims',{get(){const current=client.inspect();return {sub:current.accountId,exp:current.expiresAt};}});
   sessionAccounts.set(session,client);return session;
 }
-function requiredLogin(){
+async function requiredLogin(){
   document.documentElement.classList.add('login-required');
   document.querySelector('.login-gate')?.remove();
+  const client=accountServices.createAccountsClient({persistSession:true});
+  const restored=await client.restore();
+  if(restored)return accountSessionProjection(client,restored);
   const gate=make('main','login-gate'),card=make('section','login-card'),form=make('form','login-form');
   gate.setAttribute('aria-label','Sign in to CodiServer');card.append(make('h1','','CodiServer'),make('p','','Sign in or create an account to continue.'),make('p','login-hint',"This service is only for David's KSU friends and family. Anyone else using it is violating the terms of service. This restriction is not currently enforced."));
+  const retention=client.inspect().retention;
+  if(retention==='expired'||retention==='invalid')card.append(make('p','login-hint','Your remembered sign-in is no longer valid. Please sign in again.'));
+  if(retention==='unavailable')card.append(make('p','login-hint','This browser cannot remember sign-in. You can still sign in for this tab.'));
   const name=make('input'),password=make('input'),confirmation=make('input');
   name.type='text';name.required=true;name.minLength=3;name.maxLength=28;name.pattern='[A-Za-z][A-Za-z0-9]{2,27}';name.autocomplete='username';name.autocapitalize='none';name.spellcheck=false;name.setAttribute('aria-label','Username');
   password.type='password';password.required=true;password.maxLength=256;password.autocomplete='current-password';password.setAttribute('aria-label','Password');
@@ -860,7 +868,7 @@ function requiredLogin(){
   function paint(){const register=mode==='register';confirmLabel.hidden=!register;confirmation.required=register;password.maxLength=register?64:256;password.autocomplete=register?'new-password':'current-password';submit.textContent=register?'Register':'Sign in';toggle.textContent=register?'Already have an account? Sign in':'Create an account';hint.textContent=register?'Username: 3–28 letters or numbers, starting with a letter. Password: 4–32 characters.':'Use your username and password.';error.textContent='';}
   toggle.addEventListener('click',()=>{if(busy)return;mode=mode==='signin'?'register':'signin';password.value='';confirmation.value='';paint();});
   form.append(nameLabel,passwordLabel,confirmLabel,hint,error,submit,toggle);card.append(form);gate.append(card);document.body.append(gate);paint();
-  return new Promise(resolve=>{form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value);password.value='';confirmation.value='';gate.remove();resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;}});});
+  return new Promise(resolve=>{form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value,client);password.value='';confirmation.value='';gate.remove();if(client.inspect().retention==='unavailable')feedback('Signed in for this tab. This browser could not remember sign-in.');resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;}});});
 }
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
   if(accountTransition||sessionEnding)throw Error('An account change is already in progress.');

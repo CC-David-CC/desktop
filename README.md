@@ -51,3 +51,15 @@ prevents concurrent Files opens from creating duplicate Text windows. Focus
 requested before attachment/readiness is delivered only while that window is
 still active, avoiding delayed focus theft. WordCraft's internal multi-document
 activation is outside this Text-scoped change.
+
+The existing login gate now first asks Accounts to restore a remembered session.
+Only a freshly server-validated registered identity opens the desktop and its
+account-scoped layout/recovery drafts. The viewer keeps its public projection;
+Accounts owns credentials, IndexedDB and signed renewal. The original login form
+appears for an absent, invalid or expired login, with a short status message for
+invalid retention or unavailable browser storage. A transient renewal outage
+keeps account views closed and uses the existing startup reconnect behavior.
+Successful refresh and browser reopening do not ask for a password while the
+server session remains valid. Sign-out forgets retention before server revocation;
+dirty-work decisions and local-draft protections remain unchanged. No layout,
+colors, rail order or account-file server behavior changes for this feature.
