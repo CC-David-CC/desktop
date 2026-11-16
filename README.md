@@ -25,3 +25,18 @@ The retained bootstrap can unregister a worker and reload when actually run; it 
 `legacy/reference-tests/` retains original test source separately from application source. The known original negative-control limitation remains documented in OWNED-REFERENCE-TESTS.md; it has not been made passing by changing assertions.
 
 The removed replacement composition remains obsolete. The new scoped composition uses this existing viewer, with Calculator, Files, Text, WordCraft and Help. Unselected menu entries are disabled. Broader app integration is separate work. See the parent's deploy/VIEWER-TEST.md for source/build/qualification limits and the explicitly authorized test rollout.
+
+Text's public file-binding signal is composed into `updateAccountFileBinding`.
+Desktop validates the current window/account and confirmed canonical resource,
+then updates its owned launch metadata, caption, accessibility label and saved
+layout without remounting the editor. Untitled Text binds to a file on its first
+confirmed Save; Save As changes that same window's binding. Rejected/cancelled
+saves do not change it. No editable Text document is copied into the shell.
+
+Saved Text layouts are restored with an explicit historical-navigation marker.
+The app reads current server bytes and reports their actual revision; the old
+layout SHA is not a permanent open precondition. Explicit Files-selected launches
+still carry an exact selected revision, and recovery drafts retain their own
+base revision/conflict checks. Missing/unavailable Text stays identified and
+read-only with Retry in the same app view. Login persistence and general same-file
+activation remain separate work.
