@@ -18,7 +18,12 @@ const surfaces = new Map();
 const models = new Map();
 let currentSession = null;
 let identityConfig = null;
-let identityModule = null;
+let accountServices = null;
+const sessionAccounts=new WeakMap();
+const viewerProfile=window.CODI_VIEWER_PROFILE;
+const enabledApp=id=>viewerProfile.apps.includes(id);
+async function renewAccountSession(session){const client=sessionAccounts.get(session);if(!client)throw Error('Account session unavailable.');await client.renew();}
+async function logoutAccountSession(session){const client=sessionAccounts.get(session);if(client)await client.logout();}
 let identityTimer = null;
 let renewingIdentity = false;
 let accountTransition = false;
@@ -31,7 +36,7 @@ let v86Instance = null;
 let guestNetworkAdapter = null;
 let desktopLifecycle = null;
 let deviceCacheModule = import('./assets/desktop/device-cache.mjs');
-deviceCacheModule.then(module=>module.registerDeviceCache()).catch(error=>console.warn('Device app cache unavailable:',error.message));
+deviceCacheModule.then(module=>viewerProfile.offlineCache?module.registerDeviceCache():null).catch(error=>console.warn('Device app cache unavailable:',error.message));
 let feedbackTimer = null;
 let onScreenKeyboardEnabled = false;
 let voiceControl = null;
@@ -96,10 +101,11 @@ const accountAppTemplates=[
 ];
 function signedInSubject(){
   const s=currentSession;
+  if(!s||sessionAccounts.get(s)?.inspect().phase!=='authenticated')return null;
   return s?.public.kind==='registered'&&['official','test-server'].includes(s.trust?.level)&&s.trust.claims?.sub===s.public.sub&&s.trust.claims.exp>Date.now()/1000?s.public.sub:null;
 }
 function accountApplications(){
-  const subject=signedInSubject();if(!subject)return [];
+  const subject=signedInSubject();if(!subject||!enabledApp('personal-template'))return [];
   if(!accountAppCatalogs.has(subject))accountAppCatalogs.set(subject,new Map(accountAppTemplates.map(template=>{
     const id='user-app:'+subject.slice(5)+':'+template.slot;
     return [id,{...template,id,ownerSub:subject,ownerName:currentSession.public.name}];
@@ -185,7 +191,7 @@ function button(label, handler, cls = '') {
 function textButton(label, handler, cls = '') { const n=button(label,handler,cls);n.textContent=label;return n; }
 const desktopMenu=[
   {name:'Browser (in development)',icon:'browser',disabled:true,disabledTitle:'In development'},
-  {name:'Office',icon:'document-editor',children:[{name:'Text Editor',icon:'text'},{name:'Document Editor',icon:'document-editor'},{name:'Spreadsheet',icon:'spreadsheet'},{name:'Data Explorer (Perspective)',icon:'spreadsheet'},{name:'PDF Viewer',icon:'pdf-viewer'}]},
+  {name:'Office',icon:'document-editor',children:[{name:'WordCraft',icon:'document-editor'},{name:'Text Editor',icon:'text'},{name:'Document Editor',icon:'document-editor'},{name:'Spreadsheet',icon:'spreadsheet'},{name:'Data Explorer (Perspective)',icon:'spreadsheet'},{name:'PDF Viewer',icon:'pdf-viewer'}]},
   {name:'Programming',icon:'notebook',children:[{name:'Python Notebook — Browser',icon:'notebook'},{name:'Python Notebook — Linux (in development)',icon:'notebook',disabled:true,disabledTitle:'In development'}]},
   {name:'Electronics',icon:'help',children:[{name:'Arduino Simulator',icon:'help'},{name:'Pico Simulator',icon:'help'},{name:'Circuit Simulator',icon:'help'},{name:'Electronics Design',icon:'help'},{name:'Digital Logic',icon:'help'}]},
   {name:'Crafts',icon:'image-editor',children:[{name:'Embroidery Studio',icon:'image-editor'},{name:'Stitch Converter',icon:'image-editor'}]},
@@ -202,6 +208,7 @@ const desktopMenu=[
   {name:'System Tools',icon:'help',children:[{name:'Terminal',icon:reference.icons.terminal},{name:'Files',icon:reference.icons.files},{name:'Calculator',icon:'calculator'},{name:'Voice input',icon:'microphone',action:()=>voiceControl?.toggle()},{name:'Keyboard lock',icon:'keyboard',action:()=>{setScreenKeyboardEnabled(!onScreenKeyboardEnabled);feedback(onScreenKeyboardEnabled?'On-screen keyboard enabled':'On-screen keyboard locked');}},{separator:true},{name:'CodeMirror 6',icon:'help',disabled:true},{name:'OpenCascade.js',icon:'help',disabled:true},{name:'glTF-Transform',icon:'help',disabled:true},{name:'FFmpeg',icon:'help',disabled:true},{name:'WaveSurfer.js',icon:'help',disabled:true},{name:'Tone.js',icon:'help',disabled:true},{name:'zip.js',icon:'help',disabled:true},{name:'Mermaid.js',icon:'help',disabled:true},{name:'Apache ECharts',icon:'help',disabled:true},{name:'Plotly.js',icon:'help',disabled:true},{name:'pdfme',icon:'help',disabled:true},{name:'MapLibre GL JS',icon:'help',disabled:true},{name:'Transformers.js',icon:'help',disabled:true},{name:'Trystero (WebRTC)',icon:'help',disabled:true},{name:'TanStack Virtual',icon:'help',disabled:true},{name:'ONNX Runtime Web',icon:'help',disabled:true},{name:'WebTorrent',icon:'help',disabled:true},{name:'Yjs',icon:'help',disabled:true}]},
   {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:'end-session'}
 ];
+const applicationIds=Object.freeze({'Microduck':'microduck','Falling Blocks (preview)':'falling-blocks','Owl Companion (preview)':'owl-companion','Physics Playground (preview)':'physics-playground','Snake Garden (preview)':'snake-garden','Clockwork Room (preview)':'clockwork-room','Chess Study (preview)':'chess-study','Solitaire (preview)':'solitaire','Sky Courier (preview)':'sky-courier','Marble Works (preview)':'marble-works','Stack & Balance (preview)':'stack-balance','Crystal Defense (preview)':'crystal-defense','Drone Circuit (preview)':'drone-circuit','Reactive Control Desk (preview)':'reactive-control-desk','Story Cards (preview)':'story-cards','Expression Puppet (preview)':'expression-puppet','Rhythm Garden (preview)':'rhythm-garden','Lantern Leap (preview)':'lantern-leap','Garden Defense (preview)':'garden-defense','Pocket Rally (preview)':'pocket-rally','Sling Targets (preview)':'sling-targets','Gravity Pinball (preview)':'gravity-pinball','Kinetic Relay (preview)':'kinetic-relay','Tabletop Bot Arena (preview)':'tabletop-bot-arena','Pocket Golf (preview)':'pocket-golf','Target Garden (preview)':'target-garden','Orbital Courier (preview)':'orbital-courier','Clockwork Quest (preview)':'clockwork-quest','Memory Garden (preview)':'memory-garden','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','jSketcher':'jsketcher','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help','WordCraft':'wordcraft'});
 // Presentation only: menu dispatch, persisted IDs, and app-owned titles stay unchanged.
 // Each entry lists the existing menu name, the user-facing name, and former title aliases.
 const applicationDisplayNames=Object.freeze({
@@ -262,8 +269,8 @@ class Desktop {
   }
   dispose(){this.observer.disconnect();}
   layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
-  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return true;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));return true;}catch(error){console.warn('Could not save window layout:',error.message);return false;}}
-  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
+  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return true;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path,storage:w.launchContext?.storage,sha256:w.launchContext?.sha256};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));return true;}catch(error){console.warn('Could not save window layout:',error.message);return false;}}
+  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['wordcraft','microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(v.storage==='account'&&typeof v.path==='string'&&!v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'account',path:v.path,sha256:v.sha256,owner});win.ownerSub=owner;}else if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
   get pins(){return (this.workspacePins.get(this.current)??['files','terminal']).filter(availableApplication);}
   set pins(value){const other=(this.workspacePins.get(this.current)||[]).filter(app=>!availableApplication(app));this.workspacePins.set(this.current,[...new Set([...other,...value])]);}
   panelWidth(){return this.mobile?52:72;}
@@ -370,7 +377,7 @@ class Desktop {
         if(e.shiftKey||e.ctrlKey||e.metaKey||!windows.length){this.launch(app);return;}
         this.showTasks(app,windows,b);
       },'task'+(windows.length?' running':'')+(active?' active':''));
-      b.dataset.app=app;b.append(icon(app));
+      b.dataset.app=app;b.append(icon(app));b.disabled=!enabledApp(app);
       b.setAttribute('aria-pressed',String(active));b.title=label+': '+windows.length+' open'+(windows.some(w=>w.minimized)?' (including minimized)':'');
       if(windows.length)b.append(make('span','count',windows.length));
       b.addEventListener('contextmenu',e=>{e.preventDefault();this.closePopups();this.showTasks(app,windows,b);});
@@ -395,7 +402,7 @@ class Desktop {
     for(const entry of items) {
       if(entry.separator){pane.append(make('div','menu-separator'));continue;}
       const displayName=applicationMenuNames.get(entry)||entry.name;
-      const row=button(displayName,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title=entry.disabledTitle||'Background tool available to applications';}
+      const row=button(displayName,null,'menu-row');row.setAttribute('role','menuitem');if(entry.disabled){row.disabled=true;row.title=entry.disabledTitle||'Background tool available to applications';}else if((applicationIds[entry.name]&&!enabledApp(applicationIds[entry.name]))||(entry.name==='Voice input'&&!viewerProfile.speech)){row.disabled=true;row.title='Not enabled in this test release';}
       const arrow=make('span','arrow',entry.children?'‹':'');arrow.setAttribute('aria-hidden','true');
       row.append(arrow,icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',displayName));
       const open=()=>{
@@ -421,7 +428,7 @@ class Desktop {
     if(typeof entry.action==='function'){entry.action();return;}
     const name=entry.name;
     if(name==='End session'){endSession();return;}
-    const app={'Microduck':'microduck','Falling Blocks (preview)':'falling-blocks','Owl Companion (preview)':'owl-companion','Physics Playground (preview)':'physics-playground','Snake Garden (preview)':'snake-garden','Clockwork Room (preview)':'clockwork-room','Chess Study (preview)':'chess-study','Solitaire (preview)':'solitaire','Sky Courier (preview)':'sky-courier','Marble Works (preview)':'marble-works','Stack & Balance (preview)':'stack-balance','Crystal Defense (preview)':'crystal-defense','Drone Circuit (preview)':'drone-circuit','Reactive Control Desk (preview)':'reactive-control-desk','Story Cards (preview)':'story-cards','Expression Puppet (preview)':'expression-puppet','Rhythm Garden (preview)':'rhythm-garden','Lantern Leap (preview)':'lantern-leap','Garden Defense (preview)':'garden-defense','Pocket Rally (preview)':'pocket-rally','Sling Targets (preview)':'sling-targets','Gravity Pinball (preview)':'gravity-pinball','Kinetic Relay (preview)':'kinetic-relay','Tabletop Bot Arena (preview)':'tabletop-bot-arena','Pocket Golf (preview)':'pocket-golf','Target Garden (preview)':'target-garden','Orbital Courier (preview)':'orbital-courier','Clockwork Quest (preview)':'clockwork-quest','Memory Garden (preview)':'memory-garden','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','jSketcher':'jsketcher','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help'}[name];
+    const app=applicationIds[name];
     if(!app)return;
     this.launch(app);
   }
@@ -440,15 +447,21 @@ class Desktop {
     const w=this.launch(app,context.path.split('/').pop()+' — '+title);
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
+  openAccountFile(app,resource){
+    if(!['text','wordcraft'].includes(app)||!enabledApp(app)||resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.startsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..')||!/^[0-9a-f]{64}$/.test(resource.sha256))throw Error('An exact account file is required.');
+    const w=this.launch(app,resource.path.split('/').pop()+' — '+(app==='wordcraft'?'WordCraft':'Text Editor'));
+    w.launchContext=Object.freeze({version:1,storage:'account',path:resource.path,sha256:resource.sha256,owner:resource.owner});w.ownerSub=resource.owner;this.saveLayout();return w;
+  }
   openPdfPreview(owner,bytes,name){
     if(!signedInSubject()||owner!==signedInSubject()||!(bytes instanceof Uint8Array)||bytes.length<1||bytes.length>128*1024*1024)throw Error('Cannot open this PDF preview.');
     const w=this.launch('pdf-viewer',(name.split('/').pop()||'Document')+' — Print preview');
     w.ownerSub=owner;w.previewBytes=new Uint8Array(bytes);this.render();return w;
   }
   launch(app,title) {
+    if(!enabledApp(app)){feedback('This app is not enabled in this test release.');return null;}
     const personal=accountApp(app);
     if(isAccountApp(app)&&!personal){feedback('Sign in to open your apps.');return null;}
-    const names={microduck:'Microduck','falling-blocks':'Falling Blocks (preview)','owl-companion':'Owl Companion (preview)','physics-playground':'Physics Playground (preview)','snake-garden':'Snake Garden (preview)','clockwork-room':'Clockwork Room (preview)','chess-study':'Chess Study (preview)',solitaire:'Solitaire (preview)','sky-courier':'Sky Courier (preview)','marble-works':'Marble Works (preview)','stack-balance':'Stack & Balance (preview)','crystal-defense':'Crystal Defense (preview)','drone-circuit':'Drone Circuit (preview)','reactive-control-desk':'Reactive Control Desk (preview)','story-cards':'Story Cards (preview)','expression-puppet':'Expression Puppet (preview)','rhythm-garden':'Rhythm Garden (preview)','lantern-leap':'Lantern Leap (preview)','garden-defense':'Garden Defense (preview)','pocket-rally':'Pocket Rally (preview)','sling-targets':'Sling Targets (preview)','gravity-pinball':'Gravity Pinball (preview)','kinetic-relay':'Kinetic Relay (preview)','tabletop-bot-arena':'Tabletop Bot Arena (preview)','pocket-golf':'Pocket Golf (preview)','target-garden':'Target Garden (preview)','orbital-courier':'Orbital Courier (preview)','clockwork-quest':'Clockwork Quest (preview)','memory-garden':'Memory Garden (preview)',browser:'Browser',terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',notebook:'Python Notebook','arduino-simulator':'Arduino Simulator','pico-simulator':'Pico Simulator','circuitjs':'Circuit Simulator','jsketcher':'jSketcher','electronics-design':'Electronics Design','digital-logic':'Digital Logic','embroidery-studio':'Embroidery Studio','stitch-converter':'Stitch Converter',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
+    const names={wordcraft:'WordCraft',microduck:'Microduck','falling-blocks':'Falling Blocks (preview)','owl-companion':'Owl Companion (preview)','physics-playground':'Physics Playground (preview)','snake-garden':'Snake Garden (preview)','clockwork-room':'Clockwork Room (preview)','chess-study':'Chess Study (preview)',solitaire:'Solitaire (preview)','sky-courier':'Sky Courier (preview)','marble-works':'Marble Works (preview)','stack-balance':'Stack & Balance (preview)','crystal-defense':'Crystal Defense (preview)','drone-circuit':'Drone Circuit (preview)','reactive-control-desk':'Reactive Control Desk (preview)','story-cards':'Story Cards (preview)','expression-puppet':'Expression Puppet (preview)','rhythm-garden':'Rhythm Garden (preview)','lantern-leap':'Lantern Leap (preview)','garden-defense':'Garden Defense (preview)','pocket-rally':'Pocket Rally (preview)','sling-targets':'Sling Targets (preview)','gravity-pinball':'Gravity Pinball (preview)','kinetic-relay':'Kinetic Relay (preview)','tabletop-bot-arena':'Tabletop Bot Arena (preview)','pocket-golf':'Pocket Golf (preview)','target-garden':'Target Garden (preview)','orbital-courier':'Orbital Courier (preview)','clockwork-quest':'Clockwork Quest (preview)','memory-garden':'Memory Garden (preview)',browser:'Browser',terminal:'Terminal — guest',files:'Home — Files',text:'Untitled — Text Editor','document-editor':'Untitled — Document Editor','pdf-viewer':'PDF Viewer',spreadsheet:'Untitled — Spreadsheet','data-explorer':'Data Explorer','audio-editor':'Audio Editor','gcode-preview':'G-code Preview','excalidraw':'Excalidraw','svg-editor':'SVG-edit','diagrams-net':'diagrams.net',notebook:'Python Notebook','arduino-simulator':'Arduino Simulator','pico-simulator':'Pico Simulator','circuitjs':'Circuit Simulator','jsketcher':'jSketcher','electronics-design':'Electronics Design','digital-logic':'Digital Logic','embroidery-studio':'Embroidery Studio','stitch-converter':'Stitch Converter',replicad:'Replicad','kiri-moto':'Kiri:Moto','mesh-tool':'Mesh:Tool','image-editor':'Image Editor',calculator:'Calculator',help:'Desktop help'};
     const offset=(this.nextId%5)*35;
     const side=this.windows.filter(n=>n.workspace===this.current&&!n.minimized&&n.tileSide).length%2?'right':'left';
     const w={id:this.nextId++,app,title:title||personal?.name||names[app]||app,workspace:this.current,x:170+offset,y:80+offset,w:820,h:540};
@@ -555,7 +568,9 @@ class Desktop {
     });popup.append(keep,textButton('Close',()=>this.closePopups()));this.root.append(popup);this.popupBackdrop();this.positionPopup(popup,this.localLeft(anchor),this.localTop(anchor));
     try{const info=await (await deviceCacheModule).deviceStorageInfo();if(popup.isConnected)status.textContent='This domain uses approximately '+Math.round((info.usage||0)/1048576)+' MiB of the browser’s estimated '+Math.round((info.quota||0)/1048576)+' MiB allowance. '+(info.persistent?'Storage is persistent.':'Storage is currently best effort.')+(info.updateWaiting?' An app update will activate after existing tabs close.':'');}catch(error){if(popup.isConnected)status.textContent=error.message;}
   }
-  requestWindowClose(w) {
+  async requestWindowClose(w) {
+    const appView=this.root.querySelector(`[data-window="${w.id}"]`)?.appView;
+    if(typeof appView?.requestClose==='function'){if(w.closePending)return;w.closePending=true;try{if(await appView.requestClose()!==true)return;}catch(error){feedback(error.message);return;}finally{w.closePending=false;}}
     // The mounted operation owns local commit/acknowledgement, not the app's
     // dirty flag or peer-derived busy state. Forced disposal remains separate.
     const pendingLocalWrite=()=>{
@@ -627,7 +642,7 @@ function renderPreviews(){
   surfaces.set('Desktop',desktop);
 }
 renderPreviews();
-initializeVoiceControl();
+if(viewerProfile.speech)initializeVoiceControl();
 window.addEventListener('pagehide',()=>{closeBrowserSourcePages();for(const surface of surfaces.values())surface.saveLayout();});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const surface of surfaces.values())surface.saveLayout();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const desktop of surfaces.values())desktop.closePopups();});
@@ -733,7 +748,7 @@ async function recoverDesktopSession(){
   try{
     const {refreshRecoveryPolicy}=await import('./assets/desktop/recovery-policy.mjs');
     await refreshRecoveryPolicy(identityConfig);
-    try{await identityModule.renewSession(identityConfig,currentSession);guestNetworkAdapter?.syncSession();}
+    try{await renewAccountSession(currentSession);guestNetworkAdapter?.syncSession();}
     catch(error){
       if(error.status!==401)throw error;
       await endSession();
@@ -744,11 +759,11 @@ async function initializeSession(){
   const response=await fetch('config.json',{cache:'no-store'});
   if(!response.ok)throw Error('Identity configuration could not be loaded.');
   identityConfig=await response.json();
-  identityModule=await import('./network/identity.mjs');
+  accountServices=await import('./assets/desktop/account-services.mjs');
   const session=await requiredLogin();
   sessionViews(session);
   currentSession=session;
-  startMirror();
+  // This release uses the shared server-authoritative account file service.
   document.documentElement.classList.remove('login-required');
   if(identityConfig.identity.mode==='server')identityTimer=setInterval(maintainIdentity,30000);
   for(const surface of surfaces.values()){surface.restoreLayout();surface.render();}
@@ -785,15 +800,15 @@ function sessionViews(session){
   });
 }
 async function accountSession(mode,username,password){
-  if(mode==='anonymous')return identityModule.beginSession(identityConfig,'anonymous');
-  if(identityConfig?.identity.mode!=='server'||!identityConfig.accounts?.actions?.includes(mode))throw Error('Accounts are unavailable in this preview.');
-  const {makeKey,thumbprint,sameKey}=await import('./network/crypto.mjs'),key=await makeKey(),sid=crypto.randomUUID();
-  const session={privateKey:key.privateKey,public:{sid,sub:sid,name:'anon-'+sid.slice(0,8),kind:'anonymous',key:key.publicKey,certificate:null}};
-  const result=await identityModule.authenticatedRequest(identityConfig.identity,session,identityConfig.identity.apiBase+'/auth',{username,password,operation:mode});
-  if(!sameKey(result.identity.key,session.public.key))throw Error('Server changed the session key.');
-  const trust=await identityModule.verifyIdentity(result.identity,identityConfig.identity);
-  if(result.identity.kind!=='registered'||result.identity.name!==username.trim().toLowerCase())throw Error('Account identity did not match.');
-  session.public=result.identity;session.token=result.session_token;session.trust=trust;session.fingerprint=await thumbprint(session.public.key);return session;
+  if(currentSession)throw Error('Use End session before signing into another account. Your current windows and work remain open.');
+  if(!['register','signin'].includes(mode))throw Error('Choose sign in or register.');
+  const client=accountServices.createAccountsClient();
+  const state=await client.authenticate({mode,username,password});
+  const authority=client.createFileAuthority();
+  const session={public:{sid:state.sessionId,sub:state.accountId,name:state.displayName,kind:'registered',key:authority.publicKey},
+    trust:{level:state.trust},fingerprint:await accountServices.thumbprint(authority.publicKey)};
+  Object.defineProperty(session.trust,'claims',{get(){const current=client.inspect();return {sub:current.accountId,exp:current.expiresAt};}});
+  sessionAccounts.set(session,client);return session;
 }
 function requiredLogin(){
   document.documentElement.classList.add('login-required');
@@ -818,20 +833,20 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const prior=currentSession;approved=prior?await confirmSessionEnd():{initial:[],tracker:trackSessionEdits()};
     if(!approved||currentSession!==prior)return;
     const next=await accountSession(mode,username,password);
-    if(!stillWanted()||currentSession!==prior||(approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});if(stillWanted())feedback('Work changed while signing in. Review it and try again.');return;}
-    try{await approved.tracker.quiesce();}catch(error){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback(error.message||'Could not pause Text.');return;}
-    if(!stillWanted()||currentSession!==prior||approved.tracker.changed()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Work changed while preparing to sign in.');return;}
+    if(!stillWanted()||currentSession!==prior||(approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await logoutAccountSession(next).catch(()=>{});if(stillWanted())feedback('Work changed while signing in. Review it and try again.');return;}
+    try{await approved.tracker.quiesce();}catch(error){await logoutAccountSession(next).catch(()=>{});feedback(error.message||'Could not pause Text.');return;}
+    if(!stillWanted()||currentSession!==prior||approved.tracker.changed()){await logoutAccountSession(next).catch(()=>{});feedback('Work changed while preparing to sign in.');return;}
     const previous=currentSession;
-    for(const surface of surfaces.values())if(!surface.saveLayout()){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not save your window layout. Your current session is still open.');return;}
+    for(const surface of surfaces.values())if(!surface.saveLayout()){await logoutAccountSession(next).catch(()=>{});feedback('Could not save your window layout. Your current session is still open.');return;}
     for(const surface of surfaces.values())surface.root.inert=true;
-    if(previous){try{await identityModule.logoutSession(identityConfig,previous);}catch(error){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Could not confirm sign-out. The server may have ended your session; recover your work or try again.');return;}}
-    if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
+    if(previous){try{await logoutAccountSession(previous);}catch(error){await logoutAccountSession(next).catch(()=>{});feedback('Could not confirm sign-out. The server may have ended your session; recover your work or try again.');return;}}
+    if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await logoutAccountSession(next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
     try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
-    catch(error){console.warn('Account-change cleanup failed:',error);await identityModule.logoutSession(identityConfig,next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
+    catch(error){console.warn('Account-change cleanup failed:',error);await logoutAccountSession(next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
     if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;try{await v86Instance.stop();}catch(error){console.warn('Could not stop Linux:',error.message);}v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
     // Let abort handlers terminate their workers before installing the next session.
     closeAccountMirror({suspend:true});await Promise.resolve();closeBrowserSourcePages();currentSession=sessionViews(next);
-    startMirror();
+    // This release uses the shared server-authoritative account file service.
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});else await startGuest();
@@ -845,7 +860,7 @@ async function maintainIdentity(){
   if(!expiry||expiry-Date.now()/1000>180)return;
   renewingIdentity=true;
   try{
-    await identityModule.renewSession(identityConfig,session);
+    await renewAccountSession(session);
     if(currentSession===session){
       guestNetworkAdapter?.syncSession();
     }
@@ -869,6 +884,7 @@ function reportGuestWorkerFailure(error,epoch){
 }
 async function startGuest(){
   guestFiles.ready=false;
+  if(!viewerProfile.guest){guestState='disabled';guestMessage='Linux is not enabled in this test release.';return;}
   const epoch=++bootEpoch;
   try{
     guestState='starting';guestMessage='Loading local Linux kernel and initramfs…';refreshTerminals();
@@ -910,10 +926,10 @@ function disposeSessionView(win,reason){
   const errors=disposePublicAppView(win,reason);win.remove();if(errors.length)throw new AggregateError(errors,'An app did not finish cleanup.');
 }
 let sessionEnding=false;
-function sessionDirtyWindows(){
+function sessionDirtyWindows(owner=signedInSubject()){
   const result=[];
   for(const desktop of surfaces.values())for(const w of desktop.windows){
-    if(!accountWindow(w))continue;
+    if(w.ownerSub&&w.ownerSub!==owner)continue;
     let embeddedDirty=false;
     if(w.app==='notebook')try{embeddedDirty=!!desktop.root.querySelector('[data-window="'+w.id+'"] .notebook-app iframe')?.contentWindow?.jupyterapp?.status?.isDirty;}catch{embeddedDirty=true;}
     if(windowHasChanges(w)||embeddedDirty){const revisions=Object.entries(w).flatMap(([name,value])=>value&&typeof value==='object'?['revision','edits','sequence'].filter(key=>Number.isSafeInteger(value[key])).map(key=>name+'.'+key+':'+value[key]):[]).join(',');result.push({desktop,w,revisions});}
@@ -923,7 +939,10 @@ function sessionDirtyWindows(){
 function sameDirtyWindows(a,b){return a.length===b.length&&a.every((item,index)=>item.desktop===b[index].desktop&&item.w===b[index].w&&item.revisions===b[index].revisions);}
 function trackSessionEdits(){
   let changed=false,invalid=false;const cleanup=[],observers=[],leases=[],tracked=[],textTracked=new WeakSet(),documentTracked=new WeakSet(),imageTracked=new WeakSet(),audioTracked=new WeakSet(),spreadsheetTracked=new WeakSet(),dataExplorerTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
-  const membership=()=>[...surfaces.values()].flatMap(desktop=>desktop.windows.filter(accountWindow).map(w=>({desktop,w})));
+  // Successful sign-out invalidates Accounts before view teardown. Keep the
+  // captured owner's membership stable while checking for actual edits.
+  const owner=signedInSubject();
+  const membership=()=>[...surfaces.values()].flatMap(desktop=>desktop.windows.filter(w=>!w.ownerSub||w.ownerSub===owner).map(w=>({desktop,w})));
   const initialMembers=membership();
   const read=life=>{const x=life.snapshot();if(!x||!Number.isSafeInteger(x.revision)||x.revision<0||typeof x.dirty!=='boolean'||typeof x.pending!=='boolean')throw Error('Invalid app lifecycle state.');return x;};
   const release=()=>{for(const lease of leases.splice(0).reverse())try{lease.release();}catch(error){console.error('Could not release app pause:',error);}};
@@ -976,6 +995,8 @@ async function endSession(){
   sessionEnding=true;let approved;
   try{
   const session=currentSession;
+  for(const desktop of surfaces.values())desktop.root.inert=true;
+  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){if(typeof win.appView?.requestClose==='function'&&await win.appView.requestClose()!==true)return;}
   approved=await confirmSessionEnd();
   if(!approved||currentSession!==session)return;
   if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){feedback('Work changed while confirming. Review it and try ending the session again.');return;}
@@ -985,9 +1006,9 @@ async function endSession(){
   // Prevent new input while the server request is in flight. On an uncertain
   // outcome the desktop remains intact so the user can retry or recover work.
   for(const desktop of surfaces.values())desktop.root.inert=true;
-  try{if(session&&identityModule)await identityModule.logoutSession(identityConfig,session);}
+  try{if(session&&sessionAccounts.has(session))await logoutAccountSession(session);}
   catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Could not confirm sign-out. The server may have ended this session; recover your work or try again.');return;}
-  if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Work changed during sign-out. The server session ended; recover your work before reloading.');return;}
+  if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows(session.public.sub)))){for(const desktop of surfaces.values())desktop.root.inert=false;feedback('Work changed during sign-out. The server session ended; recover your work before reloading.');return;}
   closeBrowserSourcePages();
   try{for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window'))disposeSessionView(win,'Session ending');}
   catch(error){for(const desktop of surfaces.values())desktop.root.inert=false;console.warn('Session cleanup failed:',error);feedback('The server signed out, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading.');return;}
@@ -997,7 +1018,7 @@ async function endSession(){
   guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
   ++bootEpoch;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}
   currentSession=null;serialOutput.length=0;serialPending='';guestState='loading';feedback('Signing out…');location.reload();
-  }finally{approved?.tracker.dispose();sessionEnding=false;}
+  }finally{for(const desktop of surfaces.values())desktop.root.inert=false;approved?.tracker.dispose();sessionEnding=false;}
 }
 let bootRecovery=null,bootRetry=0;
 async function initializeWithRecovery(){
@@ -1005,7 +1026,7 @@ async function initializeWithRecovery(){
     await initializeSession();bootRecovery?.stop();bootRecovery=null;
   }catch(error){
     clearInterval(identityTimer);identityTimer=null;
-    if(currentSession&&identityModule)identityModule.logoutSession(identityConfig,currentSession).catch(()=>{});currentSession=null;
+    if(currentSession&&sessionAccounts.has(currentSession))logoutAccountSession(currentSession).catch(()=>{});currentSession=null;
     feedback('Waiting for server: '+error.message);
     if(!bootRecovery){
       try{const {startLifecycle}=await import('./assets/desktop/lifecycle.mjs'),base=new URL('.',document.baseURI).pathname.replace(/\/$/,'');bootRecovery=startLifecycle({config:{identity:{apiBase:base+'/api/v1'},desktopLifecycle:{version:'codi-desktop-lifecycle/1',statusPath:base+'/api/v1/desktop-status'}},roots:()=>[document.querySelector('#previews'),document.querySelector('#voice-control')],getGuestLink:()=>false,hasRunningGuest:()=>false,initiallyDisconnected:true});}
