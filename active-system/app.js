@@ -269,8 +269,8 @@ class Desktop {
   }
   dispose(){this.observer.disconnect();}
   layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
-  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return true;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path,storage:w.launchContext?.storage,sha256:w.launchContext?.sha256,textDraftId:w.app==='text'?w.textDraftId:undefined};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));return true;}catch(error){console.warn('Could not save window layout:',error.message);return false;}}
-  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['wordcraft','microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(v.storage==='account'&&typeof v.path==='string'&&!v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'account',path:v.path,sha256:v.sha256,owner,...(v.app==='text'?{restore:true}:{})});win.ownerSub=owner;}else if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}if(v.app==='text'&&typeof v.textDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.textDraftId))win.textDraftId=v.textDraftId;this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
+  saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return true;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path,storage:w.launchContext?.storage,sha256:w.launchContext?.sha256,textDraftId:w.app==='text'?w.textDraftId:undefined,wordcraftDraftId:w.app==='wordcraft'?w.wordcraftDraftId:undefined,wordcraftRecoveryAsCopy:w.app==='wordcraft'&&w.wordcraftRecoveryAsCopy?true:undefined};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));return true;}catch(error){console.warn('Could not save window layout:',error.message);return false;}}
+  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set(['wordcraft','microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(v.storage==='account'&&typeof v.path==='string'&&!v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'account',path:v.path,sha256:v.sha256,owner,...(['text','wordcraft'].includes(v.app)?{restore:true}:{})});win.ownerSub=owner;}else if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner});win.ownerSub=owner;}if(v.app==='text'&&typeof v.textDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.textDraftId))win.textDraftId=v.textDraftId;if(v.app==='wordcraft'&&typeof v.wordcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.wordcraftDraftId))win.wordcraftDraftId=v.wordcraftDraftId;if(v.app==='wordcraft'&&v.wordcraftRecoveryAsCopy===true)win.wordcraftRecoveryAsCopy=true;this.windows.push(win);}this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
   get pins(){return (this.workspacePins.get(this.current)??['files','terminal']).filter(availableApplication);}
   set pins(value){const other=(this.workspacePins.get(this.current)||[]).filter(app=>!availableApplication(app));this.workspacePins.set(this.current,[...new Set([...other,...value])]);}
   panelWidth(){return this.mobile?52:72;}
@@ -448,22 +448,23 @@ class Desktop {
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
   updateAccountFileBinding(w,resource){
-    if(!this.windows.includes(w)||w.app!=='text'||resource.owner!==signedInSubject())throw Error('Current Text window/account required.');
+    if(!this.windows.includes(w)||!['text','wordcraft'].includes(w.app)||resource.owner!==signedInSubject())throw Error('Current document window/account required.');
     const path=resource.path,sha256=resource.sha256;
-    if(path===null){if(sha256!==null)throw Error('Untitled Text cannot have a saved revision.');delete w.launchContext;}
+    if(path===null){if(sha256!==null)throw Error('Untitled document cannot have a saved revision.');delete w.launchContext;}
     else{
-      if(typeof path!=='string'||path.length>2048||path.startsWith('/')||path.endsWith('/')||path.split('/').some(p=>!p||p==='.'||p==='..'||/[\0\\]/.test(p))||!/^[0-9a-f]{64}$/.test(sha256))throw Error('Confirmed canonical Text file binding required.');
+      if(typeof path!=='string'||path.length>2048||path.startsWith('/')||path.endsWith('/')||path.split('/').some(p=>!p||p==='.'||p==='..'||/[\0\\]/.test(p))||!/^[0-9a-f]{64}$/.test(sha256))throw Error('Confirmed canonical document file binding required.');
       w.launchContext=Object.freeze({version:1,storage:'account',path,sha256,owner:resource.owner});
     }
-    w.ownerSub=resource.owner;w.title=(path===null?'Untitled':path.split('/').pop())+' — Text Editor';
+    w.ownerSub=resource.owner;w.title=(path===null?'Untitled':path.split('/').pop())+(w.app==='wordcraft'?' — WordCraft':' — Text Editor');
     const win=this.root.querySelector('[data-window="'+w.id+'"]');
     if(win){win.querySelector('.caption-text').textContent=displayedWindowTitle(w);win.setAttribute('aria-label',displayedWindowTitle(w));}
     if(!this.saveLayout())feedback('Your file is saved, but this browser could not remember its window.');
   }
-  activateTextFile(resource){
+  activateTextFile(resource){return this.activateAccountFile(resource,'text');}
+  activateAccountFile(resource,app=null){
     if(resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.length>2048||resource.path.startsWith('/')||resource.path.endsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..'||/[\0\\]/.test(p)))throw Error('Current canonical account file required.');
     for(const desktop of new Set([this,...surfaces.values()])){
-      const w=desktop.windows.find(w=>w.app==='text'&&w.ownerSub===resource.owner&&w.launchContext?.storage==='account'&&w.launchContext.owner===resource.owner&&w.launchContext.path===resource.path);
+      const w=desktop.windows.find(w=>['text','wordcraft'].includes(w.app)&&(!app||w.app===app)&&w.ownerSub===resource.owner&&w.launchContext?.storage==='account'&&w.launchContext.owner===resource.owner&&w.launchContext.path===resource.path);
       if(!w)continue;
       w.rolled=false;w.focusWhenReady=true;desktop.activateWindow(w);
       const view=desktop.root.querySelector('[data-window="'+w.id+'"]')?.appView;
@@ -474,7 +475,7 @@ class Desktop {
   }
   openAccountFile(app,resource){
     if(!['text','wordcraft'].includes(app)||!enabledApp(app)||resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.startsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..')||!/^[0-9a-f]{64}$/.test(resource.sha256))throw Error('An exact account file is required.');
-    if(app==='text'){const existing=this.activateTextFile(resource);if(existing)return existing;}
+    const existing=this.activateAccountFile(resource);if(existing)return existing;
     const w=this.launch(app,resource.path.split('/').pop()+' — '+(app==='wordcraft'?'WordCraft':'Text Editor'));
     w.launchContext=Object.freeze({version:1,storage:'account',path:resource.path,sha256:resource.sha256,owner:resource.owner});w.ownerSub=resource.owner;this.saveLayout();return w;
   }
@@ -803,6 +804,7 @@ async function initializeSession(){
   if(identityConfig.identity.mode==='server')identityTimer=setInterval(maintainIdentity,30000);
   for(const surface of surfaces.values()){surface.restoreLayout();surface.render();}
   void accountServices.restoreTextRecovery({desktops:[...surfaces.values()],accountId:session.public.sub,valid:()=>currentSession===session&&signedInSubject()===session.public.sub});
+  void accountServices.restoreWordcraftRecovery({desktops:[...surfaces.values()],accountId:session.public.sub,valid:()=>currentSession===session&&signedInSubject()===session.public.sub});
   refreshTerminals();
   if(identityConfig.guestNetwork){const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error'});if(!cookie.ok)throw Error('Linux network connection could not be initialized.');}
   await startGuest();
@@ -974,13 +976,15 @@ function sessionDirtyWindows(owner=signedInSubject()){
   const result=[];
   for(const desktop of surfaces.values())for(const w of desktop.windows){
     if(w.ownerSub&&w.ownerSub!==owner)continue;
-    let embeddedDirty=false;
+    let embeddedDirty=false,viewState=null;
+    try{viewState=desktop.root.querySelector('[data-window="'+w.id+'"]')?.appView?.lifecycle?.snapshot();}catch{embeddedDirty=true;}
     if(w.app==='notebook')try{embeddedDirty=!!desktop.root.querySelector('[data-window="'+w.id+'"] .notebook-app iframe')?.contentWindow?.jupyterapp?.status?.isDirty;}catch{embeddedDirty=true;}
-    if(windowHasChanges(w)||embeddedDirty){const revisions=Object.entries(w).flatMap(([name,value])=>value&&typeof value==='object'?['revision','edits','sequence'].filter(key=>Number.isSafeInteger(value[key])).map(key=>name+'.'+key+':'+value[key]):[]).join(',');result.push({desktop,w,revisions});}
+    if(windowHasChanges(w)||embeddedDirty||viewState?.dirty||viewState?.pending){const revisions=Object.entries(w).flatMap(([name,value])=>value&&typeof value==='object'?['revision','edits','sequence'].filter(key=>Number.isSafeInteger(value[key])).map(key=>name+'.'+key+':'+value[key]):[]).concat(viewState?'view:'+viewState.revision:[]).join(',');result.push({desktop,w,revisions});}
   }
   return result;
 }
 function sameDirtyWindows(a,b){return a.length===b.length&&a.every((item,index)=>item.desktop===b[index].desktop&&item.w===b[index].w&&item.revisions===b[index].revisions);}
+function sessionLifecycleSnapshot(life){const x=life.snapshot();if(!x||!Number.isSafeInteger(x.revision)||x.revision<0||typeof x.dirty!=='boolean'||typeof x.pending!=='boolean')throw Error('Invalid app lifecycle state.');return x;}
 function trackSessionEdits(){
   let changed=false,invalid=false;const cleanup=[],observers=[],leases=[],tracked=[],textTracked=new WeakSet(),documentTracked=new WeakSet(),imageTracked=new WeakSet(),audioTracked=new WeakSet(),spreadsheetTracked=new WeakSet(),dataExplorerTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
   // Successful sign-out invalidates Accounts before view teardown. Keep the
@@ -988,14 +992,14 @@ function trackSessionEdits(){
   const owner=signedInSubject();
   const membership=()=>[...surfaces.values()].flatMap(desktop=>desktop.windows.filter(w=>!w.ownerSub||w.ownerSub===owner).map(w=>({desktop,w})));
   const initialMembers=membership();
-  const read=life=>{const x=life.snapshot();if(!x||!Number.isSafeInteger(x.revision)||x.revision<0||typeof x.dirty!=='boolean'||typeof x.pending!=='boolean')throw Error('Invalid app lifecycle state.');return x;};
+  const read=sessionLifecycleSnapshot;
   const release=()=>{for(const lease of leases.splice(0).reverse())try{lease.release();}catch(error){console.error('Could not release app pause:',error);}};
   const disposeTracker=()=>{release();for(const observer of observers)observer.disconnect();for(const fn of cleanup)try{fn();}catch(error){console.error('Could not remove app listener:',error);}};
   try{for(const desktop of surfaces.values()){
     for(const event of ['input','change']){desktop.root.addEventListener(event,mark,true);cleanup.push(()=>desktop.root.removeEventListener(event,mark,true));}
     for(const win of desktop.root.querySelectorAll('.window')){
       const w=desktop.windows.find(item=>item.id===Number(win.dataset.window)),text=win.querySelector('.codi-text-editor .cm-content');
-      const life=['text','document-editor','image-editor','audio-editor','spreadsheet','data-explorer'].includes(w?.app)?win.appView?.lifecycle:undefined;
+      const life=['text','wordcraft','document-editor','image-editor','audio-editor','spreadsheet','data-explorer'].includes(w?.app)?win.appView?.lifecycle:undefined;
       if(w&&life!==undefined){try{if(!life||typeof life.snapshot!=='function'||typeof life.subscribe!=='function'||typeof life.quiesce!=='function')throw Error('Invalid app lifecycle.');const off=life.subscribe(mark);if(typeof off!=='function')throw Error('Invalid app lifecycle subscription.');cleanup.push(off);const initial=read(life);tracked.push({desktop,w,win,life,initial});if(w.app==='text')textTracked.add(w);else if(w.app==='document-editor')documentTracked.add(w);else if(w.app==='image-editor')imageTracked.add(w);else if(w.app==='audio-editor')audioTracked.add(w);else if(w.app==='spreadsheet')spreadsheetTracked.add(w);else if(w.app==='data-explorer')dataExplorerTracked.add(w);}catch(error){console.error('App lifecycle unavailable:',error);invalid=true;}}
       else if(w&&text){const observer=new MutationObserver(mark);observer.observe(text,{childList:true,characterData:true,subtree:true});observers.push(observer);textTracked.add(w);}
       else if(w?.app==='text'){invalid=true;}
@@ -1026,11 +1030,15 @@ function sessionHasUntrackedWork(w,tracker){
   }
   return w.app==='notebook'&&!tracker.notebookTracked.has(w);
 }
-async function confirmSessionEnd(){
-  let tracker,initial;try{tracker=trackSessionEdits();initial=sessionDirtyWindows();}catch(error){tracker?.dispose();console.error('Could not inspect app state:',error);feedback('Could not inspect an app safely. Your session is still open; close the app and try again.');return null;}
+async function confirmSessionEnd(approvedViews=new Map()){
+  let tracker,initial,closeChanged=false;try{tracker=trackSessionEdits();initial=sessionDirtyWindows();for(const [view,before] of approvedViews){if(!before)continue;const now=sessionLifecycleSnapshot(view.lifecycle);if(now.revision!==before.revision||now.dirty!==before.dirty||now.pending!==before.pending)closeChanged=true;}}catch(error){tracker?.dispose();console.error('Could not inspect app state:',error);feedback('Could not inspect an app safely. Your session is still open; close the app and try again.');return null;}
+  if(closeChanged){tracker.dispose();feedback('Work changed after close confirmation. Review it and try ending the session again.');return null;}
   const untracked=initial.find(({w})=>sessionHasUntrackedWork(w,tracker));
   if(untracked){const message=untracked.w.app==='calculator'&&untracked.w.calculator?.saving?'Finish the pending Calculator file operation before ending or changing your session.':'Close '+untracked.w.title+' using its own close button before ending or changing your session. This protects its unsaved work.';await confirmDesktop(message,{title:'Finish in this app first',confirmLabel:'OK',cancelLabel:'Keep working'});tracker.dispose();return null;}
-  if(initial.length){const names=initial.slice(0,4).map(({w})=>w.title).join(', '),more=initial.length>4?' and '+(initial.length-4)+' more':'';const ok=await confirmDesktop('End this session and discard unsaved work in '+names+more+'? Notebook output and temporary Linux files may also be lost.',{title:'Unsaved changes',confirmLabel:'End session',cancelLabel:'Keep working',danger:true});if(!ok){tracker.dispose();return null;}}
+  // Public document views already asked Save/Discard/Cancel. Keep tracking
+  // their real dirty revisions, but do not ask the legacy question twice.
+  const unconfirmed=initial.filter(({desktop,w})=>!approvedViews.get(desktop.root.querySelector('[data-window="'+w.id+'"]')?.appView));
+  if(unconfirmed.length){const names=unconfirmed.slice(0,4).map(({w})=>w.title).join(', '),more=unconfirmed.length>4?' and '+(unconfirmed.length-4)+' more':'';const ok=await confirmDesktop('End this session and discard unsaved work in '+names+more+'? Notebook output and temporary Linux files may also be lost.',{title:'Unsaved changes',confirmLabel:'End session',cancelLabel:'Keep working',danger:true});if(!ok){tracker.dispose();return null;}}
   if(tracker.changed()||!sameDirtyWindows(initial,sessionDirtyWindows())){tracker.dispose();feedback('Work changed while confirming. Review it and try ending the session again.');return null;}
   return {initial,tracker};
 }
@@ -1040,8 +1048,9 @@ async function endSession(){
   try{
   const session=currentSession;
   for(const desktop of surfaces.values())desktop.root.inert=true;
-  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){if(typeof win.appView?.requestClose==='function'&&await win.appView.requestClose()!==true)return;}
-  approved=await confirmSessionEnd();
+  const approvedViews=new Map();
+  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){const view=win.appView;if(typeof view?.requestClose==='function'){if(await view.requestClose()!==true)return;try{const state=view.lifecycle?sessionLifecycleSnapshot(view.lifecycle):null;approvedViews.set(view,state?Object.freeze({revision:state.revision,dirty:state.dirty,pending:state.pending}):null);}catch{feedback('Could not inspect an app safely. Your session is still open.');return;}}}
+  approved=await confirmSessionEnd(approvedViews);
   if(!approved||currentSession!==session)return;
   if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){feedback('Work changed while confirming. Review it and try ending the session again.');return;}
   try{await approved.tracker.quiesce();}catch(error){feedback(error.message||'Could not pause Text.');return;}
