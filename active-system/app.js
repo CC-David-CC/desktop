@@ -19,6 +19,7 @@ const models = new Map();
 let currentSession = null;
 let identityConfig = null;
 let accountServices = null;
+let desktopAgentOperations = null;
 const sessionAccounts=new WeakMap();
 const viewerProfile=window.CODI_VIEWER_PROFILE;
 const enabledApp=id=>viewerProfile.apps.includes(id);
@@ -802,6 +803,20 @@ async function initializeSession(){
   if(!response.ok)throw Error('Identity configuration could not be loaded.');
   identityConfig=await response.json();
   accountServices=await import('./assets/desktop/account-services.mjs');
+  desktopAgentOperations=null;
+  if(identityConfig.agentOperations?.version==='webos-agent-operations/1'){
+    const {createDesktopAgentOperations}=await import('./assets/desktop/agent-operations.mjs');
+    desktopAgentOperations=createDesktopAgentOperations({
+      owner(){
+        const session=currentSession, client=sessionAccounts.get(session);
+        if(!client||sessionEnding||accountTransition||signedInSubject()!==session.public.sub)throw Error('Account operation authority unavailable.');
+        const authority=client.createOperationAuthority();
+        return {...authority,check(){authority.check();if(currentSession!==session||sessionEnding||accountTransition||
+          signedInSubject()!==authority.accountId)throw Error('Account changed.');}};
+      },
+      confirm:confirmDesktop,thumbprint:accountServices.thumbprint
+    });
+  }
   const session=await requiredLogin();
   sessionViews(session);
   currentSession=session;
@@ -1099,6 +1114,7 @@ async function initializeWithRecovery(){
 }
 initializeWithRecovery();
 window.desktopLab={get lifecycle(){return desktopLifecycle?.state??null;},get settings(){return {...settings};},get surfaces(){return surfaces;},get reference(){return reference;},get session(){return currentSession?{id:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName,localKeyFingerprint:currentSession.localKeyFingerprint}:null;},get guestState(){return guestState;}};
+Object.defineProperty(window.desktopLab,'agentOperations',{get(){return desktopAgentOperations?.bridge;}});
 function syncVisibleViewport(){
   const view=window.visualViewport,host=document.querySelector('#previews');
   if(!host)return;

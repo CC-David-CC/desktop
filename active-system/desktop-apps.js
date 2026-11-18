@@ -9,12 +9,12 @@ function publicCommandRegistry(){
  }).catch(error=>{publicCommandRegistryPromise=null;throw error;});
 }
 // Promises settle false on cancellation or app disposal, so stale actions cannot continue.
-function confirmDesktop(message,{title='Confirm',confirmLabel='Continue',cancelLabel='Cancel',danger=false,signal}={}){
+function confirmDesktop(message,{title='Confirm',confirmLabel='Continue',cancelLabel='Cancel',danger=false,signal,requireTrustedClick=false}={}){
  if(signal?.aborted)return Promise.resolve(false);
  const dialog=document.createElement('dialog');dialog.className='codi-confirm-dialog';
  const heading=make('h2','',title),body=make('p','',message),actions=make('div','codi-confirm-actions');
  const titleId='codi-confirm-'+crypto.randomUUID();heading.id=titleId;dialog.setAttribute('aria-labelledby',titleId);
- return new Promise(resolve=>{let done=false;const finish=value=>{if(done)return;done=true;signal?.removeEventListener('abort',abort);if(dialog.open)dialog.close();dialog.remove();resolve(value);};const abort=()=>finish(false);actions.append(textButton(cancelLabel,()=>finish(false)),textButton(confirmLabel,()=>finish(true),danger?'codi-confirm-danger':''));dialog.append(heading,body,actions);document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){finish(false);return;}try{dialog.showModal();actions.firstElementChild.focus();}catch(error){finish(false);}});
+ return new Promise(resolve=>{let done=false;const finish=value=>{if(done)return;done=true;signal?.removeEventListener('abort',abort);if(dialog.open)dialog.close();dialog.remove();resolve(value);};const abort=()=>finish(false);actions.append(textButton(cancelLabel,()=>finish(false)),textButton(confirmLabel,event=>{if(!requireTrustedClick||event.isTrusted)finish(true);},danger?'codi-confirm-danger':''));dialog.append(heading,body,actions);document.body.append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(false);});signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){finish(false);return;}try{dialog.showModal();actions.firstElementChild.focus();}catch(error){finish(false);}});
 }
 function promptDesktop(label,{title='Enter a name',value='',confirmLabel='OK',cancelLabel='Cancel',signal}={}){
  if(signal?.aborted)return Promise.resolve(null);
@@ -32,6 +32,7 @@ function publicAppContent(id,desktop,w){
       const module=await loader.loadApp(id);
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
       const host=publicAppHost(desktop,w,id);
+      if(desktopAgentOperations)host.registerAgentView=desktopAgentOperations.register;
       try{const registry=await publicCommandRegistry(),owner=w.ownerSub||signedInSubject();if(owner)host.commands=registry.scope({windowId:String(w.id),appId:id,owner,isOpen:()=>desktop.windows.includes(w)});}catch(error){console.error('App command service unavailable',error);}
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
       instance=loader.mountApp(module,host);const body=instance.element;
