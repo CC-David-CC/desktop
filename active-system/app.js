@@ -605,7 +605,7 @@ class Desktop {
   }
   async requestWindowClose(w) {
     const appView=this.root.querySelector(`[data-window="${w.id}"]`)?.appView;
-    if(typeof appView?.requestClose==='function'){if(w.closePending)return;w.closePending=true;try{if(await appView.requestClose()!==true)return;if(appView.lifecycle?.commitClose)await appView.lifecycle.commitClose();}catch(error){feedback(error.message);return;}finally{w.closePending=false;}}
+    if(typeof appView?.requestClose==='function'){if(w.closePending)return;w.closePending=true;try{if(await appView.requestClose({scope:'window'})!==true)return;if(appView.lifecycle?.commitClose)await appView.lifecycle.commitClose();}catch(error){feedback(error.message);return;}finally{w.closePending=false;}}
     // The mounted operation owns local commit/acknowledgement, not the app's
     // dirty flag or peer-derived busy state. Forced disposal remains separate.
     const pendingLocalWrite=()=>{
@@ -1074,7 +1074,7 @@ async function endSession(){
   const session=currentSession;
   for(const desktop of surfaces.values())desktop.root.inert=true;
   const approvedViews=new Map();
-  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){const view=win.appView;if(typeof view?.requestClose==='function'){if(await view.requestClose()!==true)return;try{const state=view.lifecycle?sessionLifecycleSnapshot(view.lifecycle):null;approvedViews.set(view,state?Object.freeze({revision:state.revision,dirty:state.dirty,pending:state.pending}):null);}catch{feedback('Could not inspect an app safely. Your session is still open.');return;}}}
+  for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){const view=win.appView;if(typeof view?.requestClose==='function'){if(await view.requestClose({scope:'session'})!==true)return;try{const state=view.lifecycle?sessionLifecycleSnapshot(view.lifecycle):null;approvedViews.set(view,state?Object.freeze({revision:state.revision,dirty:state.dirty,pending:state.pending}):null);}catch{feedback('Could not inspect an app safely. Your session is still open.');return;}}}
   approved=await confirmSessionEnd(approvedViews);
   if(!approved||currentSession!==session)return;
   if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){feedback('Work changed while confirming. Review it and try ending the session again.');return;}
