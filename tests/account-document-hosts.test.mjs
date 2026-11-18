@@ -5,6 +5,9 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../active-system/app.js',import.meta.url),'utf8');
 const start=source.indexOf('class Desktop {'),end=source.indexOf('\n}\n',start)+2;
+const editorDefinitions=source.match(/^const (?:layerAccountApps|accountDocumentNames)=.*;$/gm).join('\n');
+const editors={text:'Text Editor',wordcraft:'WordCraft',pdfcraft:'PdfCraft',gridcraft:'GridCraft',deckcraft:'DeckCraft',
+  photocraft:'PhotoCraft',vectorcraft:'VectorCraft',figcraft:'FigCraft'};
 const sha='a'.repeat(64),draft='12345678-1234-1234-1234-123456789abc';
 function fixture() {
   let owner='account-A';const storage=new Map(),surfaces=new Map();
@@ -13,7 +16,7 @@ function fixture() {
     enabledApp:()=>true,windowRect:w=>({x:w.x,y:w.y,w:w.w,h:w.h}),
     localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},
     feedback:message=>{throw Error(message);}});
-  const Desktop=vm.runInContext(source.slice(start,end)+';Desktop',context);
+  const Desktop=vm.runInContext(editorDefinitions+'\n'+source.slice(start,end)+';Desktop',context);
   function desktop() {
     const d=Object.create(Desktop.prototype);Object.assign(d,{windows:[],current:0,active:null,nextId:10,layoutOwner:owner,
       root:{querySelector:()=>null},activateWindow(w){this.active=w.id;w.minimized=false;},
@@ -23,15 +26,15 @@ function fixture() {
   return {desktop,storage,setOwner:value=>{owner=value;}};
 }
 
-test('clean PDF and new office windows restore exact account resource, draft and geometry',()=>{
+test('Account document windows restore exact account resource, draft and geometry',()=>{
   const f=fixture(),d=f.desktop();
-  for(const app of ['text','wordcraft','pdfcraft','gridcraft','deckcraft']) {
+  for(const app of Object.keys(editors)) {
     const w=d.launch(app,app);w.ownerSub='account-A';w.workspace=2;w.minimized=true;
     w.launchContext={storage:'account',owner:'account-A',path:'Documents/'+app,sha256:sha};
     w[app+'DraftId']=draft;w[app+'RecoveryAsCopy']=true;
   }
   assert.equal(d.saveLayout(),true);const restored=f.desktop();restored.layoutOwner=null;restored.restoreLayout();
-  assert.deepEqual(Array.from(restored.windows,w=>w.app),['text','wordcraft','pdfcraft','gridcraft','deckcraft']);
+  assert.deepEqual(Array.from(restored.windows,w=>w.app),Object.keys(editors));
   for(const w of restored.windows) {
     assert.equal(w.launchContext.path,'Documents/'+w.app);assert.equal(w.launchContext.sha256,sha);
     assert.equal(w.launchContext.restore,true);assert.equal(w.ownerSub,'account-A');
@@ -44,7 +47,7 @@ test('clean PDF and new office windows restore exact account resource, draft and
 
 test('all account document hosts update canonical titles/revisions and activate one existing view across screens',()=>{
   const f=fixture(),a=f.desktop(),b=f.desktop();
-  for(const [app,name] of Object.entries({text:'Text Editor',wordcraft:'WordCraft',pdfcraft:'PdfCraft',gridcraft:'GridCraft',deckcraft:'DeckCraft'})) {
+  for(const [app,name] of Object.entries(editors)) {
     const w=a.launch(app,'Untitled');a.updateAccountFileBinding(w,{owner:'account-A',path:'Documents/'+app+'.data',sha256:sha});
     assert.equal(w.title,app+'.data — '+name);
     assert.equal(b.openAccountFile(app,{owner:'account-A',path:w.launchContext.path,sha256:sha}),w);
