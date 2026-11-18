@@ -8,7 +8,7 @@ const start=source.indexOf('class Desktop {'),end=source.indexOf('\n}\n',start)+
 const editorDefinitions=source.match(/^const (?:layerAccountApps|accountDocumentNames)=.*;$/gm).join('\n');
 const editors={text:'Text Editor',wordcraft:'WordCraft',pdfcraft:'PdfCraft',gridcraft:'GridCraft',deckcraft:'DeckCraft',
   photocraft:'PhotoCraft',vectorcraft:'VectorCraft',figcraft:'FigCraft',anicraft:'AniCraft',lightcraft:'LightCraft',
-  designcraft:'DesignCraft',soundcraft:'SoundCraft',filmcraft:'FilmCraft',effectcraft:'EffectCraft',cadcraft:'CADCraft'};
+  designcraft:'DesignCraft',soundcraft:'SoundCraft',filmcraft:'FilmCraft',effectcraft:'EffectCraft',cadcraft:'CADCraft',texturecraft:'TextureCraft'};
 const sha='a'.repeat(64),draft='12345678-1234-1234-1234-123456789abc';
 function fixture() {
   let owner='account-A';const storage=new Map(),surfaces=new Map();
