@@ -20,6 +20,14 @@ The unsolicited replacement formerly under `src/` and its two replacement-only t
 
 The parent now composes a scoped test release through scripts/build_viewer.mjs. Its immutable viewer-profile.json selects enabled apps and optional capabilities. Linux and voice are off; bootstrap no longer requires a v86 library for startup. Terminal's retained classic source has its own owner. Runtime, account/file services and applications remain separately owned. App-owned asynchronous readiness and close decisions are explicit while mount remains synchronous.
 
+The office integration branch adds GridCraft and DeckCraft to the existing menu,
+account resource activation/binding, session lifecycle and saved-layout metadata.
+It also restores clean PdfCraft windows through the same allow-list. These
+registrations do not enable an app without its parent build profile and qualified
+engine. `node --test tests/account-document-hosts.test.mjs` exercises the actual
+classic Desktop methods for account isolation, resource identity and restoration;
+assembled browser qualification remains a separate gate.
+
 The retained bootstrap can unregister a worker and reload when actually run; it was inspected, not executed in this correction. No website, worker, account state, service or routing was changed. Neither full beta parity nor all old apps running is a source-organization completion gate.
 
 `legacy/reference-tests/` retains original test source separately from application source. The known original negative-control limitation remains documented in OWNED-REFERENCE-TESTS.md; it has not been made passing by changing assertions.
