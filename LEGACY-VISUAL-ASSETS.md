@@ -12,3 +12,10 @@ All PNG chunk CRCs and decompressed scanline streams were checked; representativ
 Captured GPL/LGPL and package copyright files are preserved verbatim. They cover multiple legacy visual/font packages; their presence does not prove per-image upstream identity or release notice completeness. Resolve exact provenance/attribution/distribution obligations before enabling or releasing a legacy asset set. Do not assume a generic license match establishes ownership.
 
 No old theme, host configuration or deployment was enabled. Future assembly should use the existing viewer inputs with an explicit asset graph and license evidence; no renderer redesign is authorized by this organization step.
+
+## Source and notices for the captured artwork
+
+The [artwork manifest](third-party/desktop-artwork/artwork-attribution.json) maps the 74 numbered
+icons and wallpaper to their upstream source files and copyright notices. The directory contains
+the identified upstream artwork and notices. The viewer continues to load the captured bytes
+under `active-system/assets/`.

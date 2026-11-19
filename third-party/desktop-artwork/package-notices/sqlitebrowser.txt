@@ -1,0 +1,163 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: sqlitebrowser
+Source: https://github.com/sqlitebrowser/sqlitebrowser
+
+Files: *
+Copyright:
+ 2003 Mauricio Piacentini
+ 2003 Raquel Ravanini
+ 2003 Jens Miltner
+ 2012-2014 Pete Morgan
+ 2012-2014 René Peinthor
+ 2012-2014 Martin Kleusberg
+License: MPL-2.0 or GPL-3+
+
+Files: cmake/FindQScintilla.cmake
+Copyright: 2010-2013 Julien Schueller
+License: BSD-2-Clause-FreeBSD
+
+Files: debian/*
+Copyright:
+ 2007 François Févotte <francois.fevotte@ensta.org>
+ 2010 Jari Aalto <jari.aalto@cante.net>
+ 2011 Lisandro Damián Nicanor Pérez Meyer <perezmeyer@gmail.com>
+ 2011-2024 Arto Jantunen <viiru@debian.org>
+ 2025 Philippe Swartvagher <phil.swart@gmx.fr>
+License: GPL-3+
+
+Files: debian/sqlitebrowser.1
+Copyright: 2007 François Févotte <francois.fevotte@ensta.org>
+License: GPL-2+
+
+Files: distri/sqlitebrowser.desktop.appdata.xml
+Copyright: DB Browser for SQLite developers
+License: CC0-1.0
+
+Files: libs/qhexedit/*
+Copyright: 2010-2025 Winfried Simon
+License: LGPL-2.1
+
+Files: src/qdarkstyle/*
+Copyright: 2013-2019 Colin Duquesnoy
+License: Expat
+
+Files: src/sql/parser/sqlite3_*
+Copyright: 2002-2015, 2018-2021 Free Software Foundation, Inc.
+License: GPL-3+ with Bison-2.2 exception
+
+License: MPL-2.0
+ This Source Code Form is subject to the terms of the Mozilla Public License,
+ v. 2.0. If a copy of the MPL was not distributed with this file, You can
+ obtain one at https://mozilla.org/MPL/2.0/.
+Comment:
+ On Debian systems, the complete text of the Mozilla Public License vrsion 2
+ can be found in "/usr/share/common-licenses/MPL-2.0".
+
+License: GPL-2+
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU General Public License as published by the Free Software
+ Foundation, either version 2 of the License, or (at your option) any later
+ version.
+Comment:
+ On Debian systems, the complete text of the GNU General
+ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU General Public License as published by the Free Software
+ Foundation, either version 3 of the License, or (at your option) any later
+ version.
+Comment:
+ On Debian systems, the complete text of the GNU General
+ Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: BSD-2-Clause-FreeBSD
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+    1. Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+    2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE FREEBSD PROJECT ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ EVENT SHALL THE FREEBSD PROJECT OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ .
+ The views and conclusions contained in the software and documentation are
+ those of the authors and should not be interpreted as representing official
+ policies, either expressed or implied, of the FreeBSD Project.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the " Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice (including the next
+ paragraph) shall be included in all copies or substantial portions of the
+ Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+
+License: GPL-3+ with Bison-2.2 exception
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU General Public License as published by the Free Software
+ Foundation, either version 3 of the License, or (at your option) any later
+ version.
+ .
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ You should have received a copy of the GNU General Public License along with
+ this program.  If not, see <https://www.gnu.org/licenses/>.
+ .
+ As a special exception, you may create a larger work that contains part or all
+ of the Bison parser skeleton and distribute that work under terms of your
+ choice, so long as that work isn't itself a parser generator using the
+ skeleton or a modified version thereof as a parser skeleton.  Alternatively,
+ if you modify or redistribute the parser skeleton itself, you may (at your
+ option) remove this special exception, which will cause the skeleton and the
+ resulting Bison output files to be licensed under the GNU General Public
+ License without this special exception.
+ .
+ This special exception was added by the Free Software Foundation in version
+ 2.2 of Bison.
+
+License: LGPL-2.1
+ This library is free software; you can redistribute it and/or modify it under
+ the terms of the GNU Lesser General Public License as published by the Free
+ Software Foundation; either version 2.1 of the License, or (at your option)
+ any later version.
+Comment:
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License version 2.1 can be found in "/usr/share/common-licenses/LGPL-2.1".
+
+License: CC0-1.0
+ To the extent possible under law, the author(s) have dedicated all copyright
+ and related and neighboring rights to this software to the public domain
+ worldwide. This software is distributed without any warranty.
+ .
+ You should have received a copy of the CC0 Public Domain Dedication along with
+ this software. If not, see
+ <http://creativecommons.org/publicdomain/zero/1.0/>.
+Comment:
+ On Debian systems, the full text of the CC0 1.0 Universal license can be found
+ in the file `/usr/share/common-licenses/CC0-1.0'.
