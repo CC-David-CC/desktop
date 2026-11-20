@@ -39,6 +39,8 @@ let serialPending = '';
 let serialFrame = 0;
 let v86Instance = null;
 let guestNetworkAdapter = null;
+let guestAccountDevice = null;
+let guestAccountSyncTimer = null;
 let desktopLifecycle = null;
 let deviceCacheModule = import('./assets/desktop/device-cache.mjs');
 deviceCacheModule.then(module=>viewerProfile.offlineCache?module.registerDeviceCache():null).catch(error=>console.warn('Device app cache unavailable:',error.message));
@@ -545,9 +547,8 @@ class Desktop {
   localLeft(anchor) { if(!anchor)return 20;return Math.max(0,Math.min(resolution[0]-305,(anchor.getBoundingClientRect().left-this.root.getBoundingClientRect().left)/this.scaleFactor)); }
   localTop(anchor) {return anchor?(anchor.getBoundingClientRect().top-this.root.getBoundingClientRect().top)/this.scaleFactor:0;}
   appendNetworkInfo(popup){
-    popup.append(make('h4','','Network'),make('div','status-line','Browser: '+(navigator.onLine?'online':'offline')),make('p','',identityConfig?.guestNetwork?'Guest Internet is configured through box-webhost’s connection. Try ping -c 2 1.1.1.1.':'Guest networking: loopback only. Try ping -c 2 127.0.0.1. External websites open in normal browser tabs.'));
-    if(guestNetworkAdapter?.controlled!==false&&identityConfig?.guestNetwork?.durableAccountLimits)popup.append(make('p','','Preview network: public ping, DNS, and web connections on ports 80/443. Private networks are blocked. Access to the host’s public address requires sign-in. Account and shared traffic limits persist across reconnects and service restarts.'));
-    else if(identityConfig?.guestNetwork?.previewPolicy)popup.append(make('p','','Preview network: public ping, DNS, and web connections on ports 80/443. Each connection lasts up to 30 minutes or 64 MiB. The preview shares a 256 MiB allowance until the operator restarts it.'));
+    const network=guestNetworkForSession();
+    popup.append(make('h4','','Network'),make('div','status-line','Browser: '+(navigator.onLine?'online':'offline')),make('p','',network?'Guest Internet is configured for this account.':'Guest networking: loopback only. Try ping -c 2 localhost.'));
   }
   showStatus(type,anchor) {
     const popup=make('div','status-popup popup');popup.dataset.statusType=type;popup.style.top=this.localTop(anchor)+'px';
@@ -569,13 +570,12 @@ class Desktop {
       popup.append(make('div','status-line clock-date',now.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})),make('div','status-line clock-time',now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'})));
     }
     else {
-      popup.append(make('div','status-line',currentSession?`${currentSession.trust.label} · ${currentSession.id}`:'Starting anonymous session…'));
+      popup.append(make('div','status-line',currentSession?.public.kind==='registered'?'Signed in':'Guest session'));
       if(currentSession?.public.kind==='registered'){popup.append(textButton('Sign out',async()=>{if(accountTransition)return;try{await endSession();}catch(error){feedback(error.message);}}));if(identityConfig?.browserRelay)popup.append(textButton('Browser licenses & source',showBrowserSources));}
       else if(identityConfig?.identity.mode==='server'&&identityConfig.accounts?.actions?.includes('signin')){
         const actions=make('div','account-actions');
         for(const [mode,label] of [['register','Register'],['signin','Sign in']]){const b=textButton(label,()=>this.showAccountForm(mode,anchor));b.dataset.accountAction=mode;b.disabled=accountTransition;actions.append(b);}popup.append(actions);
       }else popup.append(make('p','','Accounts are unavailable in this preview.'));
-      if(currentSession)popup.append(make('div','status-line','Key: '+(currentSession.localKeyFingerprint?.slice(0,24)||'creating…')));
       this.appendNetworkInfo(popup);popup.append(textButton('Device storage',()=>this.showDeviceStorage(anchor)));if(currentSession)popup.append(textButton('End session',()=>endSession()));
     }
     if(type!=='workspaces')popup.append(textButton('Close',()=>this.closePopups()));this.root.append(popup);this.popupBackdrop();this.positionPopup(popup,this.localLeft(anchor),this.localTop(anchor));
@@ -584,7 +584,7 @@ class Desktop {
     this.closePopups();
     const popup=make('div','status-popup account-popup popup'),form=make('form','account-form');
     popup.dataset.statusType='account';popup.setAttribute('aria-label',mode==='register'?'Register account':'Sign in');
-    popup.append(make('h3','',mode==='register'?'Register':'Sign in'),make('p','','Linux and your open files stay open when you switch identity.'));
+    popup.append(make('h3','',mode==='register'?'Register':'Sign in'),make('p','','Signing in starts your account workspace. Export temporary guest files before switching.'));
     const field=(name,label,type,autocomplete)=>{const wrapper=make('label','',label),input=make('input');input.name=name;input.type=type;input.required=true;input.autocomplete=autocomplete;input.setAttribute('aria-label',label);input.maxLength=type==='password'?(mode==='register'?64:256):28;input.minLength=type==='password'?1:3;if(type!=='password'){input.pattern='[a-zA-Z][a-zA-Z0-9]{2,27}';input.autocapitalize='none';input.spellcheck=false;}wrapper.append(input);form.append(wrapper);return input;};
     const username=field('username','Username','text','username'),password=field('password','Password','password',mode==='register'?'new-password':'current-password');
     const confirmation=mode==='register'?field('confirmation','Confirm password','password','new-password'):null;
@@ -886,7 +886,7 @@ function sessionViews(session){
   });
 }
 async function accountSession(mode,username,password,client=accountServices.createAccountsClient({persistSession:true})){
-  if(currentSession)throw Error('Use End session before signing into another account. Your current windows and work remain open.');
+  if(currentSession?.public.kind==='registered')throw Error('End the current account session before signing in again.');
   if(!['register','signin'].includes(mode))throw Error('Choose sign in or register.');
   const state=await client.authenticate({mode,username,password});
   return accountSessionProjection(client,state);
@@ -905,7 +905,7 @@ async function requiredLogin(){
   const restored=await client.restore();
   if(restored)return accountSessionProjection(client,restored);
   const gate=make('main','login-gate'),card=make('section','login-card'),form=make('form','login-form');
-  gate.setAttribute('aria-label','Sign in to CodiServer');card.append(make('h1','','CodiServer'),make('p','','Sign in or create an account to continue.'),make('p','login-hint',"This service is only for David's KSU friends and family. Anyone else using it is violating the terms of service. This restriction is not currently enforced."));
+  gate.setAttribute('aria-label','Sign in to CodiServer');card.append(make('h1','','CodiServer'),make('p','','Sign in, create an account, or continue as Anon.'),make('p','login-hint',"This service is only for David's KSU friends and family. Anyone else using it is violating the terms of service. This restriction is not currently enforced."));
   const retention=client.inspect().retention;
   if(retention==='expired'||retention==='invalid')card.append(make('p','login-hint','Your remembered sign-in is no longer valid. Please sign in again.'));
   if(retention==='unavailable')card.append(make('p','login-hint','This browser cannot remember sign-in. You can still sign in for this tab.'));
@@ -917,8 +917,18 @@ async function requiredLogin(){
   const hint=make('p','login-hint'),error=make('p','login-error');error.setAttribute('role','alert');const submit=make('button','','Sign in');submit.type='submit';const toggle=make('button','login-toggle','Create an account');toggle.type='button';let mode='signin',busy=false;
   function paint(){const register=mode==='register';confirmLabel.hidden=!register;confirmation.required=register;password.maxLength=register?64:256;password.autocomplete=register?'new-password':'current-password';submit.textContent=register?'Register':'Sign in';toggle.textContent=register?'Already have an account? Sign in':'Create an account';hint.textContent=register?'Username: 3–28 letters or numbers, starting with a letter. Password: 4–32 characters.':'Use your username and password.';error.textContent='';}
   toggle.addEventListener('click',()=>{if(busy)return;mode=mode==='signin'?'register':'signin';password.value='';confirmation.value='';paint();});
-  form.append(nameLabel,passwordLabel,confirmLabel,hint,error,submit,toggle);card.append(form);gate.append(card);document.body.append(gate);paint();
-  return new Promise(resolve=>{form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value,client);password.value='';confirmation.value='';gate.remove();if(client.inspect().retention==='unavailable')feedback('Signed in for this tab. This browser could not remember sign-in.');resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;}});});
+  const anon=make('button','login-anon','Continue as Anon');anon.type='button';
+  form.append(nameLabel,passwordLabel,confirmLabel,hint,error,submit,toggle,anon);card.append(form);gate.append(card);document.body.append(gate);paint();
+  return new Promise(resolve=>{
+    anon.addEventListener('click',()=>{
+      if(busy)return;
+      busy=true;
+      const id=crypto.randomUUID();
+      password.value='';confirmation.value='';gate.remove();
+      resolve({public:{sid:id,sub:'anon:'+id,name:'Anon',kind:'anonymous'},trust:{level:'local'}});
+    });
+    form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;anon.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value,client);password.value='';confirmation.value='';gate.remove();if(client.inspect().retention==='unavailable')feedback('Signed in for this tab. This browser could not remember sign-in.');resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;anon.disabled=false;}});
+  });
 }
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
   if(accountTransition||sessionEnding)throw Error('An account change is already in progress.');
@@ -974,6 +984,13 @@ let bootEpoch=0;
 let bootFailed=false;
 let guestBootRequest=null;
 let guestBootTimer=null;
+function useAccountGuestHome(){
+  return viewerProfile.accountGuestHome===true&&serverFilesAvailable()&&!!signedInSubject();
+}
+function guestNetworkForSession(){
+  const owner=signedInSubject(),network=identityConfig?.guestNetwork;
+  return owner&&network?.allowedSubject===owner&&network.authorization?network:null;
+}
 function stopGuest(){
   ++bootEpoch;
   guestBootRequest?.abort();
@@ -990,6 +1007,10 @@ function stopGuest(){
   guestFiles.ready=false;
   guestFiles.emulator=null;
   guestFiles.trashOrigins.clear();
+  clearTimeout(guestAccountSyncTimer);
+  guestAccountSyncTimer=null;
+  guestAccountDevice?.close();
+  guestAccountDevice=null;
   const worker=v86Instance, network=guestNetworkAdapter;
   v86Instance=null;
   guestNetworkAdapter=null;
@@ -1017,7 +1038,8 @@ async function startGuest(){
   guestBootRequest=request;
   try{
     guestState='starting';guestMessage='Loading local Linux kernel and initramfs…';refreshTerminals();
-    if(identityConfig.guestNetwork){
+    const networkConfig=guestNetworkForSession();
+    if(networkConfig){
       const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error',signal:request.signal});
       if(!cookie.ok)throw Error('Linux network connection could not be initialized.');
     }
@@ -1031,14 +1053,31 @@ async function startGuest(){
       if(!response.ok)throw Error('Missing guest asset '+name+' (HTTP '+response.status+').');
     }));
     if(epoch!==bootEpoch)return;
-    const relayPath=identityConfig.guestNetwork?.relayPath;
+    const relayPath=networkConfig?.relayPath;
     const pageBase=new URL('.',location.href).pathname.replace(/\/$/,'');
     if(relayPath!==undefined&&relayPath!==pageBase+'/guest-network')throw Error('Invalid guest relay path');
     const relay=relayPath?new URL(relayPath,location.origin):null;if(relay)relay.protocol=location.protocol==='https:'?'wss:':'ws:';
-    const controlled=identityConfig.guestNetwork?.authorization!==undefined;
+    const controlled=networkConfig?.authorization!==undefined;
     if(controlled&&!relay)throw Error('Guest authorization requires a relay');
     const GuestNetworkAdapter=controlled?(await import(pageBase+'/guest-access/client.mjs')).GuestNetworkAdapter:null;
     if(epoch!==bootEpoch)return;
+    if(useAccountGuestHome()){
+      const [context,{createAccountHome},{createAccountHome9p}]=await Promise.all([
+        serverFileContext(),import('./storage/browser/account-home.mjs'),import('./assets/desktop/account-home-9p.mjs')
+      ]);
+      if(epoch!==bootEpoch||!context.valid())return;
+      const home=createAccountHome({
+        files:context.files,valid:()=>epoch===bootEpoch&&context.valid(),
+        onChange(){
+          if(guestAccountSyncTimer!==null)return;
+          guestAccountSyncTimer=setTimeout(()=>{
+            guestAccountSyncTimer=null;
+            if(epoch===bootEpoch&&context.valid()&&mirrorSession===currentSession)void mirrorInstance?.sync().catch(()=>{});
+          },500);
+        }
+      });
+      guestAccountDevice=createAccountHome9p(home);
+    }
     const {GuestWorkerClient}=await import(new URL('assets/desktop/guest-worker-client.mjs',document.baseURI));if(epoch!==bootEpoch)return;
     // v86 selects the browser scheduler when available; its normal nested
     // Worker scheduler remains the fallback. A fragment keeps the cache URL.
@@ -1053,8 +1092,18 @@ async function startGuest(){
     emulator.add_listener('download-error',event=>{if(epoch===bootEpoch)failGuest('Could not load '+event.file_name+'. Check that the static server is running.');});
     guestBootTimer=setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
     emulator.add_listener('serial0-output-byte',byte=>{if(epoch!==bootEpoch)return;receiveGuestSerial(String.fromCharCode(byte));});
-    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and temporary home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{if(epoch===bootEpoch)await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})));}).catch(error=>{if(epoch===bootEpoch)failGuest('Shared files: '+error.message);});refreshTerminals();});
-    emulator.start(options);
+    emulator.add_listener('emulator-ready',()=>{
+      if(epoch!==bootEpoch)return;
+      guestState='booting';
+      guestMessage=guestAccountDevice?'Mounting My files as Linux home…':'Starting Linux and temporary home…';
+      if(!guestAccountDevice)guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{
+        if(epoch===bootEpoch)await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({
+          sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName
+        })));
+      }).catch(error=>{if(epoch===bootEpoch)failGuest('Shared files: '+error.message);});
+      refreshTerminals();
+    });
+    emulator.start(options,guestAccountDevice?{handleAccountRequest:guestAccountDevice.request}:undefined);
   }catch(error){if(epoch===bootEpoch)failGuest(error.message||String(error));}
   finally{if(guestBootRequest===request)guestBootRequest=null;}
 }
