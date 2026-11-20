@@ -30,8 +30,8 @@ async function logoutAccountSession(session){const client=sessionAccounts.get(se
 let identityTimer = null;
 let renewingIdentity = false;
 let accountTransition = false;
-let guestState = 'loading';
-let guestMessage = 'Starting the local Linux guest…';
+let guestState = viewerProfile.guest ? 'idle' : 'disabled';
+let guestMessage = viewerProfile.guest ? 'Open Terminal to start Linux.' : 'Linux is not enabled.';
 const serialOutput = [];
 let serialPending = '';
 let serialFrame = 0;
@@ -845,8 +845,6 @@ async function initializeSession(){
     void restore({desktops:[...surfaces.values()],accountId:session.public.sub,valid:()=>currentSession===session&&signedInSubject()===session.public.sub});
   }
   refreshTerminals();
-  if(identityConfig.guestNetwork){const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error'});if(!cookie.ok)throw Error('Linux network connection could not be initialized.');}
-  await startGuest();
   if(identityConfig.desktopLifecycle)void startSessionLifecycle(session,identityConfig);
 }
 async function startSessionLifecycle(session,config){
@@ -928,13 +926,16 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await logoutAccountSession(next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
     try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
     catch(error){console.warn('Account-change cleanup failed:',error);await logoutAccountSession(next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
-    if(previous&&previous.public?.sub!==next.public?.sub&&v86Instance){++bootEpoch;try{await v86Instance.stop();}catch(error){console.warn('Could not stop Linux:',error.message);}v86Instance=null;guestFiles.ready=false;terminalMuxReady=false;terminalSessions.clear();}
+    if(previous&&previous.public?.sub!==next.public?.sub){
+      stopGuest();
+      for(const id of terminalSessions.keys())closeTerminal(id);
+    }
     // Let abort handlers terminate their workers before installing the next session.
     closeAccountMirror({suspend:true});await Promise.resolve();closeBrowserSourcePages();currentSession=sessionViews(next);
     // This release uses the shared server-authoritative account file service.
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
-    if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});else await startGuest();
+    if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
   }finally{approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
 }
@@ -959,25 +960,64 @@ async function maintainIdentity(){
 }
 let bootEpoch=0;
 let bootFailed=false;
-function failGuest(message){bootFailed=true;guestState='error';guestMessage=String(message);guestFiles.ready=false;appendSerial('\r\nGuest error: '+guestMessage+'\r\n');if(serialFrame)cancelAnimationFrame(serialFrame);flushSerial();feedback(guestMessage);refreshTerminals();}
+let guestBootRequest=null;
+let guestBootTimer=null;
+function stopGuest(){
+  ++bootEpoch;
+  guestBootRequest?.abort();
+  guestBootRequest=null;
+  clearTimeout(guestBootTimer);
+  guestBootTimer=null;
+  cancelAnimationFrame(serialFrame);
+  serialFrame=0;
+  serialPending='';
+  serialOutput.length=0;
+  terminalMuxReady=false;
+  terminalMuxLine='';
+  terminalBootText='';
+  guestFiles.ready=false;
+  guestFiles.emulator=null;
+  guestFiles.trashOrigins.clear();
+  const worker=v86Instance, network=guestNetworkAdapter;
+  v86Instance=null;
+  guestNetworkAdapter=null;
+  if(viewerProfile.guest){guestState='idle';guestMessage='Open Terminal to start Linux.';}
+  try{network?.destroy();}catch(error){console.warn('Linux network cleanup failed:',error);}
+  try{worker?.close();}catch(error){console.warn('Linux worker cleanup failed:',error);}
+}
+function failGuest(message){
+  stopGuest();
+  bootFailed=true;
+  guestState='error';
+  guestMessage=String(message);
+  for(const session of terminalSessions.values())session.screen.feed('\r\nGuest error: '+guestMessage+'\r\n');
+  feedback(guestMessage);
+  refreshTerminals();
+}
 function reportGuestWorkerFailure(error,epoch){
-  if(epoch!==bootEpoch)return;
-  let cleanupFailed=false;
-  try{guestNetworkAdapter?.destroy();guestNetworkAdapter=null;}
-  catch(cleanupError){cleanupFailed=true;console.warn('Linux network cleanup failed:',cleanupError);}
-  failGuest((error?.message||String(error))+(cleanupFailed?' Linux network cleanup was incomplete; reload before retrying.':''));
+  if(epoch===bootEpoch)failGuest(error?.message||String(error));
 }
 async function startGuest(){
-  guestFiles.ready=false;
-  if(!viewerProfile.guest){guestState='disabled';guestMessage='Linux is not enabled in this test release.';return;}
+  if(!currentSession||!viewerProfile.guest||!['idle','error'].includes(guestState))return;
   const epoch=++bootEpoch;
+  bootFailed=false;
+  const request=new AbortController();
+  guestBootRequest=request;
   try{
     guestState='starting';guestMessage='Loading local Linux kernel and initramfs…';refreshTerminals();
-    const imageResponse=await fetch('assets/terminal/v2/image.json',{cache:'no-store'});
+    if(identityConfig.guestNetwork){
+      const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error',signal:request.signal});
+      if(!cookie.ok)throw Error('Linux network connection could not be initialized.');
+    }
+    const imageResponse=await fetch('assets/terminal/v2/image.json',{cache:'no-store',signal:request.signal});
     if(!imageResponse.ok)throw Error('The terminal guest image manifest is unavailable.');
     const image=await imageResponse.json();
     if(image.version!=='codi-terminal-image/2'||!Number.isSafeInteger(image.bytes)||image.bytes<1||image.bytes>67108864||!/^[0-9a-f]{64}$/.test(image.sha256)||image.path!=='assets/terminal/v2/'+image.sha256+'.cpio.gz')throw Error('Invalid terminal guest image metadata.');
-    await Promise.all(['.build/v86/v86.wasm','.build/v86/seabios.bin','.build/v86/vgabios.bin','.build/v86/vmlinuz',image.path].map(async name=>{let response;try{response=await fetch(name,{method:'HEAD'});}catch(_){throw Error('Could not fetch guest asset '+name+'. Check the static server and assets.');}if(!response.ok)throw Error('Missing guest asset '+name+' (HTTP '+response.status+'). Run scripts/prepare-v86-assets.sh.');}));
+    const runtime='assets/terminal/v86/';
+    await Promise.all([runtime+'v86.wasm',runtime+'seabios.bin',runtime+'vgabios.bin',runtime+'vmlinuz',image.path].map(async name=>{
+      const response=await fetch(name,{method:'HEAD',signal:request.signal});
+      if(!response.ok)throw Error('Missing guest asset '+name+' (HTTP '+response.status+').');
+    }));
     if(epoch!==bootEpoch)return;
     const relayPath=identityConfig.guestNetwork?.relayPath;
     const pageBase=new URL('.',location.href).pathname.replace(/\/$/,'');
@@ -991,19 +1031,20 @@ async function startGuest(){
     // v86 selects the browser scheduler when available; its normal nested
     // Worker scheduler remains the fallback. A fragment keeps the cache URL.
     const emulator=new GuestWorkerClient(new URL(pageBase+'/assets/desktop/guest-worker-runtime.js#use-scheduling-api',location.origin),{onFatal:error=>reportGuestWorkerFailure(error,epoch)});
-    const options={wasm_path:new URL('.build/v86/v86.wasm',document.baseURI).href,memory_size:256*1024*1024,
-      bios:{url:new URL('.build/v86/seabios.bin',document.baseURI).href},vga_bios:{url:new URL('.build/v86/vgabios.bin',document.baseURI).href},
-      bzimage:{url:new URL('.build/v86/vmlinuz',document.baseURI).href},initrd:{url:new URL(image.path,document.baseURI).href},
+    const options={wasm_path:new URL(runtime+'v86.wasm',document.baseURI).href,memory_size:256*1024*1024,
+      bios:{url:new URL(runtime+'seabios.bin',document.baseURI).href},vga_bios:{url:new URL(runtime+'vgabios.bin',document.baseURI).href},
+      bzimage:{url:new URL(runtime+'vmlinuz',document.baseURI).href},initrd:{url:new URL(image.path,document.baseURI).href},
       ...(relay?{net_device:controlled?{type:'virtio'}:{type:'virtio',relay_url:relay.href}}:{}),
       filesystem:{},cmdline:'console=ttyS0,115200n8 rdinit=/init panic=-1 quiet loglevel=0'+(relay?' guest_net=1':''),autostart:true,disable_keyboard:true,disable_mouse:true,disable_speaker:true};
     v86Instance=emulator;
     if(controlled)guestNetworkAdapter=new GuestNetworkAdapter(emulator,identityConfig,{getSession:()=>currentSession,onStatus:value=>{if(value.mode==='disconnected')feedback('Linux Internet is unavailable; retrying. Browser files remain available.');}});
     emulator.add_listener('download-error',event=>{if(epoch===bootEpoch)failGuest('Could not load '+event.file_name+'. Check that the static server is running.');});
-    setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
+    guestBootTimer=setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
     emulator.add_listener('serial0-output-byte',byte=>{if(epoch!==bootEpoch)return;receiveGuestSerial(String.fromCharCode(byte));});
-    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and temporary home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})));}).catch(error=>{failGuest('Shared files: '+error.message);});refreshTerminals();});
+    emulator.add_listener('emulator-ready',()=>{if(epoch!==bootEpoch)return;guestState='booting';guestMessage='Starting Linux and temporary home…';guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{if(epoch===bootEpoch)await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName})));}).catch(error=>{if(epoch===bootEpoch)failGuest('Shared files: '+error.message);});refreshTerminals();});
     emulator.start(options);
-  }catch(error){if(epoch!==bootEpoch)return;guestNetworkAdapter?.destroy();guestNetworkAdapter=null;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}failGuest(error.message||String(error));}
+  }catch(error){if(epoch===bootEpoch)failGuest(error.message||String(error));}
+  finally{if(guestBootRequest===request)guestBootRequest=null;}
 }
 function disposeSessionView(win,reason){
   const frame=win.querySelector('.notebook-app iframe');
@@ -1107,9 +1148,8 @@ async function endSession(){
   // Let abort handlers terminate their workers before requesting navigation.
   closeAccountMirror({suspend:true});await Promise.resolve();desktopLifecycle?.stop();desktopLifecycle=null;
   clearInterval(identityTimer);
-  guestNetworkAdapter?.destroy();guestNetworkAdapter=null;
-  ++bootEpoch;if(v86Instance){try{await v86Instance.stop();}catch(_){}v86Instance=null;}
-  currentSession=null;serialOutput.length=0;serialPending='';guestState='loading';feedback('Signing out…');location.reload();
+  stopGuest();
+  currentSession=null;feedback('Signing out…');location.reload();
   }finally{for(const desktop of surfaces.values())desktop.root.inert=false;approved?.tracker.dispose();sessionEnding=false;}
 }
 let bootRecovery=null,bootRetry=0;
