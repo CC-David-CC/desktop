@@ -138,7 +138,8 @@ async function mirrorFileContext(){
   if(!mirrorContextPromise){const generation=mirrorGeneration;mirrorContextPromise=(async()=>{
     const [server,module,context]=await Promise.all([serverFileContext(),import('./storage/browser/mirror.mjs'),import('./storage/browser/account-context.mjs')]);
     if(generation!==mirrorGeneration||currentSession!==session||signedInSubject()!==owner)throw Error('Account changed. Reopen your files.');
-    const files=context.createAccountFileMirror({issuer:identityConfig.identity.issuer,owner,server:server.files,valid:server.valid,storage:identityConfig.fileStorage??null});
+    const files=await context.openAccountFileMirror({issuer:identityConfig.identity.issuer,owner,server:server.files,valid:server.valid,storage:identityConfig.fileStorage??null});
+    if(generation!==mirrorGeneration||currentSession!==session||signedInSubject()!==owner){files.close();throw Error('Account changed. Reopen your files.');}
     mirrorInstance=files;
     // The browser decides whether to grant persistent storage; no guarantee.
     navigator.storage?.persist?.().catch(()=>{});files.sync().catch(()=>{});
