@@ -52,7 +52,6 @@ const originalInputModes = new WeakMap();
 function applyScreenKeyboardPolicy(root=document){
   const fields=[...(root.matches?.('input,textarea,[contenteditable]')?[root]:[]),...root.querySelectorAll('input,textarea,[contenteditable]')];
   for(const field of fields){
-    if(field.closest?.('.login-gate'))continue;
     if(field.matches('input')&&!['text','search','url','tel','email','number','password'].includes(field.type))continue;
     if(field.hasAttribute('contenteditable')&&!field.isContentEditable)continue;
     if(!originalInputModes.has(field))originalInputModes.set(field,field.getAttribute('inputmode'));
@@ -574,6 +573,7 @@ class Desktop {
       popup.append(make('div','status-line',currentSession?.public.kind==='registered'?'Signed in':'Guest session'));
       if(currentSession?.public.kind==='registered'){popup.append(textButton('Sign out',async()=>{if(accountTransition)return;try{await endSession();}catch(error){feedback(error.message);}}));if(identityConfig?.browserRelay)popup.append(textButton('Browser licenses & source',showBrowserSources));}
       else if(identityConfig?.identity.mode==='server'&&identityConfig.accounts?.actions?.includes('signin')){
+        popup.append(make('p','',"This service is only for David's KSU friends and family. Anyone else using it is violating the terms of service. This restriction is not currently enforced."));
         const actions=make('div','account-actions');
         for(const [mode,label] of [['register','Register'],['signin','Sign in']]){const b=textButton(label,()=>this.showAccountForm(mode,anchor));b.dataset.accountAction=mode;b.disabled=accountTransition;actions.append(b);}popup.append(actions);
       }else popup.append(make('p','','Accounts are unavailable in this preview.'));
@@ -931,7 +931,7 @@ async function initializeSession(){
       confirm:confirmDesktop,thumbprint:accountServices.thumbprint
     });
   }
-  const session=await requiredLogin();
+  const session=await restoreOrStartGuestSession();
   sessionViews(session);
   currentSession=session;
   loadAccountPanelPins();
@@ -992,37 +992,14 @@ async function accountSessionProjection(client,state){
   Object.defineProperty(session.trust,'claims',{get(){const current=client.inspect();return {sub:current.accountId,exp:current.expiresAt};}});
   sessionAccounts.set(session,client);return session;
 }
-async function requiredLogin(){
-  document.documentElement.classList.add('login-required');
-  document.querySelector('.login-gate')?.remove();
+async function restoreOrStartGuestSession(){
   const client=accountServices.createAccountsClient({persistSession:true});
   const restored=await client.restore();
   if(restored)return accountSessionProjection(client,restored);
-  const gate=make('main','login-gate'),card=make('section','login-card'),form=make('form','login-form');
-  gate.setAttribute('aria-label','Sign in to CodiServer');card.append(make('h1','','CodiServer'),make('p','','Sign in, create an account, or continue as Anon.'),make('p','login-hint',"This service is only for David's KSU friends and family. Anyone else using it is violating the terms of service. This restriction is not currently enforced."));
   const retention=client.inspect().retention;
-  if(retention==='expired'||retention==='invalid')card.append(make('p','login-hint','Your remembered sign-in is no longer valid. Please sign in again.'));
-  if(retention==='unavailable')card.append(make('p','login-hint','This browser cannot remember sign-in. You can still sign in for this tab.'));
-  const name=make('input'),password=make('input'),confirmation=make('input');
-  name.type='text';name.required=true;name.minLength=3;name.maxLength=28;name.pattern='[A-Za-z][A-Za-z0-9]{2,27}';name.autocomplete='username';name.autocapitalize='none';name.spellcheck=false;name.setAttribute('aria-label','Username');
-  password.type='password';password.required=true;password.maxLength=256;password.autocomplete='current-password';password.setAttribute('aria-label','Password');
-  confirmation.type='password';confirmation.maxLength=64;confirmation.autocomplete='new-password';confirmation.setAttribute('aria-label','Confirm password');
-  const nameLabel=make('label','','Username'),passwordLabel=make('label','','Password'),confirmLabel=make('label','','Confirm password');nameLabel.append(name);passwordLabel.append(password);confirmLabel.append(confirmation);
-  const hint=make('p','login-hint'),error=make('p','login-error');error.setAttribute('role','alert');const submit=make('button','','Sign in');submit.type='submit';const toggle=make('button','login-toggle','Create an account');toggle.type='button';let mode='signin',busy=false;
-  function paint(){const register=mode==='register';confirmLabel.hidden=!register;confirmation.required=register;password.maxLength=register?64:256;password.autocomplete=register?'new-password':'current-password';submit.textContent=register?'Register':'Sign in';toggle.textContent=register?'Already have an account? Sign in':'Create an account';hint.textContent=register?'Username: 3–28 letters or numbers, starting with a letter. Password: 4–32 characters.':'Use your username and password.';error.textContent='';}
-  toggle.addEventListener('click',()=>{if(busy)return;mode=mode==='signin'?'register':'signin';password.value='';confirmation.value='';paint();});
-  const anon=make('button','login-anon','Continue as Anon');anon.type='button';
-  form.append(nameLabel,passwordLabel,confirmLabel,hint,error,submit,toggle,anon);card.append(form);gate.append(card);document.body.append(gate);paint();
-  return new Promise(resolve=>{
-    anon.addEventListener('click',()=>{
-      if(busy)return;
-      busy=true;
-      const id=crypto.randomUUID();
-      password.value='';confirmation.value='';gate.remove();
-      resolve({public:{sid:id,sub:'anon:'+id,name:'Anon',kind:'anonymous'},trust:{level:'local'}});
-    });
-    form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;anon.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value,client);password.value='';confirmation.value='';gate.remove();if(client.inspect().retention==='unavailable')feedback('Signed in for this tab. This browser could not remember sign-in.');resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;anon.disabled=false;}});
-  });
+  if(retention==='expired'||retention==='invalid')feedback('Your remembered sign-in expired. Use the Anon menu to sign in again.');
+  const id=crypto.randomUUID();
+  return {public:{sid:id,sub:'anon:'+id,name:'Anon',kind:'anonymous'},trust:{level:'local'}};
 }
 let guestPromotion = null;
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
