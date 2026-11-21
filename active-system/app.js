@@ -584,7 +584,7 @@ class Desktop {
     this.closePopups();
     const popup=make('div','status-popup account-popup popup'),form=make('form','account-form');
     popup.dataset.statusType='account';popup.setAttribute('aria-label',mode==='register'?'Register account':'Sign in');
-    popup.append(make('h3','',mode==='register'?'Register':'Sign in'),make('p','','Signing in starts your account workspace. Export temporary guest files before switching.'));
+    popup.append(make('h3','',mode==='register'?'Register':'Sign in'),make('p','',mode==='register'?'Register to keep your temporary files in your new account.':guestPromotion?'Sign in to the account you just created to finish transferring your temporary files. Signing in to another account discards them.':'Signing in opens your existing account and discards your temporary guest files.'));
     const field=(name,label,type,autocomplete)=>{const wrapper=make('label','',label),input=make('input');input.name=name;input.type=type;input.required=true;input.autocomplete=autocomplete;input.setAttribute('aria-label',label);input.maxLength=type==='password'?(mode==='register'?64:256):28;input.minLength=type==='password'?1:3;if(type!=='password'){input.pattern='[a-zA-Z][a-zA-Z0-9]{2,27}';input.autocapitalize='none';input.spellcheck=false;}wrapper.append(input);form.append(wrapper);return input;};
     const username=field('username','Username','text','username'),password=field('password','Password','password',mode==='register'?'new-password':'current-password');
     const confirmation=mode==='register'?field('confirmation','Confirm password','password','new-password'):null;
@@ -693,6 +693,7 @@ if(viewerProfile.speech)initializeVoiceControl();
 // Mounted views report actual unsaved/pending work synchronously. Draft
 // checkpoints run while editing; an unload handler is only a warning gate.
 window.addEventListener('beforeunload',event=>{
+  if(guestPromotion && guestFiles.ready){event.preventDefault();event.returnValue='';return;}
   for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){
     const life=win.appView?.lifecycle;if(!life)continue;
     try{const state=life.snapshot();if(!state.dirty&&!state.pending)continue;}catch{}
@@ -930,25 +931,43 @@ async function requiredLogin(){
     form.addEventListener('submit',async event=>{event.preventDefault();if(busy)return;const value=password.value,length=Array.from(value).length,maximum=mode==='register'?32:128;if(length<4||length>maximum||/[\u0000-\u001f\u007f-\u009f\p{Cs}]/u.test(value)){error.textContent='Password must be 4–'+maximum+' characters without control characters.';return;}if(mode==='register'&&value!==confirmation.value){error.textContent='Passwords do not match.';return;}busy=true;submit.disabled=true;toggle.disabled=true;anon.disabled=true;error.textContent='';try{const session=await accountSession(mode,name.value,value,client);password.value='';confirmation.value='';gate.remove();if(client.inspect().retention==='unavailable')feedback('Signed in for this tab. This browser could not remember sign-in.');resolve(session);}catch(failure){password.value='';confirmation.value='';error.textContent=failure.message||'Could not sign in. Please try again.';busy=false;submit.disabled=false;toggle.disabled=false;anon.disabled=false;}});
   });
 }
+let guestPromotion = null;
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
   if(accountTransition||sessionEnding)throw Error('An account change is already in progress.');
-  accountTransition=true;let approved;
+  accountTransition=true;let approved, pausedGuest;
   try{
     const prior=currentSession;approved=prior?await confirmSessionEnd():{initial:[],tracker:trackSessionEdits()};
     if(!approved||currentSession!==prior)return;
+    if(prior?.public.kind==='anonymous' && mode==='register' && v86Instance && guestState!=='ready')
+      throw Error('Wait for Terminal to finish starting before transferring guest files.');
     const next=await accountSession(mode,username,password);
+    if(mode==='register' && prior?.public.kind==='anonymous') guestPromotion={guest:prior,subject:next.public.sub};
     if(!stillWanted()||currentSession!==prior||(approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await logoutAccountSession(next).catch(()=>{});if(stillWanted())feedback('Work changed while signing in. Review it and try again.');return;}
     try{await approved.tracker.quiesce();}catch(error){await logoutAccountSession(next).catch(()=>{});feedback(error.message||'Could not pause Text.');return;}
     if(!stillWanted()||currentSession!==prior||approved.tracker.changed()){await logoutAccountSession(next).catch(()=>{});feedback('Work changed while preparing to sign in.');return;}
     const previous=currentSession;
     for(const surface of surfaces.values())if(!surface.saveLayout()){await logoutAccountSession(next).catch(()=>{});feedback('Could not save your window layout. Your current session is still open.');return;}
     for(const surface of surfaces.values())surface.root.inert=true;
+    if(guestPromotion?.guest===previous && guestPromotion.subject===next.public.sub && v86Instance){
+      try{
+        if(!guestFiles.ready || guestState!=='ready')throw Error('The guest home is unavailable.');
+        pausedGuest=v86Instance;
+        await pausedGuest.request('pauseGuest');
+        const files=new accountServices.UserFiles(sessionAccounts.get(next).createFileAuthority());
+        await promoteGuestHome(guestFiles,files,previous);
+        if(!stillWanted()||currentSession!==previous||approved.tracker.changed())throw Error('The workspace changed during the transfer.');
+      }catch(error){
+        await logoutAccountSession(next).catch(()=>{});
+        throw Error('Your account was created. Your guest files are still here. Sign in to that account to retry. '+error.message);
+      }
+    }
     if(previous){try{await logoutAccountSession(previous);}catch(error){await logoutAccountSession(next).catch(()=>{});feedback('Could not confirm sign-out. The server may have ended your session; recover your work or try again.');return;}}
     if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await logoutAccountSession(next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
     try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
     catch(error){console.warn('Account-change cleanup failed:',error);await logoutAccountSession(next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
     if(previous&&previous.public?.sub!==next.public?.sub){
       stopGuest();
+      guestPromotion=null;
       for(const id of terminalSessions.keys())closeTerminal(id);
     }
     // Let abort handlers terminate their workers before installing the next session.
@@ -959,7 +978,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
-  }finally{approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
+  }finally{if(pausedGuest && pausedGuest===v86Instance)await pausedGuest.request('resumeGuest').catch(error=>feedback(error.message));approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
 }
 async function maintainIdentity(){
   if(!currentSession||renewingIdentity||accountTransition)return;

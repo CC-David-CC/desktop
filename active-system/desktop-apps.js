@@ -79,6 +79,38 @@ const guestFiles = {
     this.changed();
   }
 };
+// The guest CPU is paused while reading this tree. The registered subject owns
+// the destination. On retry, an identical server revision is already confirmed.
+async function promoteGuestHome(guest, files, session) {
+  const internalSession = JSON.stringify({sessionId:session.id,kind:session.kind,displayName:session.displayName});
+  const directories = [''];
+  while (directories.length) {
+    const parent = directories.pop();
+    const entries = await guest.list(parent);
+    const existing = new Map((await files.list(parent)).entries.map(entry => [entry.name, entry]));
+    for (const entry of entries) {
+      const name = entry.name;
+      if (!name || name === '.' || name === '..' || /[\/\x00]/.test(name)) throw Error('Invalid guest filename.');
+      const path = parent ? parent + '/' + name : name;
+      const dest = existing.get(name);
+      if (entry.dir) {
+        if (dest && !dest.directory) throw Error('A file already exists at ' + path);
+        if (!dest) await files.mkdir(path);
+        directories.push(path);
+        continue;
+      }
+      if ((entry.mode & 0o170000) !== 0o100000) throw Error('Only regular files and folders can be transferred. Check ' + path);
+      const data = await guest.read(path);
+      if (path === 'session.json' && data.length < 1024 && new TextDecoder().decode(data) === internalSession) continue;
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
+      const sha256 = Array.from(digest, byte => byte.toString(16).padStart(2,'0')).join('');
+      if (dest?.directory) throw Error('A folder already exists at ' + path);
+      if (!dest) await files.write(path, data, null);
+      if ((await files.version(path)).sha256 !== sha256) throw Error('Account contents differ at ' + path);
+    }
+  }
+}
+
 function appInput(label,value=''){const n=make('input');n.value=value;n.setAttribute('aria-label',label);return n;}
 const serverFilesAvailable=()=>window.CODI_PRIVATE_FILES_UI===1&&identityConfig?.gateway?.version==='codi-user-files/1';
 const sessionFileClients=new WeakMap();
