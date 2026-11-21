@@ -780,8 +780,25 @@ function initializeVoiceControl(){
     speech ??= await import(new URL('assets/speech/client.mjs',document.baseURI));
     return speech;
   }
-  function destination(){
-    const selected=lastInput;
+  function insertWithFocus(input,edit){
+    let previous=document.activeElement;
+    while(previous?.localName==='iframe'&&previous.contentDocument?.activeElement)previous=previous.contentDocument.activeElement;
+    const selection=previous?.isContentEditable?previous.ownerDocument.getSelection():null;
+    const previousRange=selection?.rangeCount&&previous.contains(selection.anchorNode)&&previous.contains(selection.focusNode)
+      ?selection.getRangeAt(0).cloneRange():null;
+    try{
+      input.focus({preventScroll:true});
+      edit();
+    }finally{
+      if(previous!==input&&previous?.isConnected){
+        previous.focus({preventScroll:true});
+        if(previousRange&&previous.contains(previousRange.commonAncestorContainer)){
+          selection.removeAllRanges();selection.addRange(previousRange);
+        }
+      }
+    }
+  }
+  function destination(selected){
     if(!selected)return null;
     const {el:input,win}=selected;
     if(!input?.isConnected||!win.isConnected||win.hidden||!input.getClientRects().length||input.closest('[inert],[hidden]'))return null;
@@ -798,15 +815,18 @@ function initializeVoiceControl(){
       if(!range)return null;
       const before=input.textContent;
       return {element:input,valid:()=>input.textContent===before&&input.contains(range.commonAncestorContainer),insert:text=>{
-        input.focus({preventScroll:true});selection.removeAllRanges();selection.addRange(range);
-        if(!doc.execCommand('insertText',false,text))throw Error('The selected editor could not insert the transcript.');
+        insertWithFocus(input,()=>{
+          selection.removeAllRanges();selection.addRange(range);
+          if(!doc.execCommand('insertText',false,text))throw Error('The selected editor could not insert the transcript.');
+        });
       }};
     }
     const before=input.value,start=input.selectionStart,end=input.selectionEnd;
     return {element:input,valid:()=>editable(input)&&input.value===before&&input.selectionStart===start&&input.selectionEnd===end,insert:text=>{
       if(start===null){
-        input.focus({preventScroll:true});
-        if(!input.ownerDocument.execCommand('insertText',false,text))throw Error('The selected field could not insert the transcript.');
+        insertWithFocus(input,()=>{
+          if(!input.ownerDocument.execCommand('insertText',false,text))throw Error('The selected field could not insert the transcript.');
+        });
       }else{
         input.setRangeText(text,start,end,'end');
         input.dispatchEvent(new InputEvent('input',{bubbles:true,composed:true,inputType:'insertText',data:text}));
@@ -815,11 +835,12 @@ function initializeVoiceControl(){
   }
   async function begin(){
     if(activeJob)return;
-    const target=destination();if(!target){message('Click a text field or terminal, then tap the microphone.');return;}
-    const token={target,selection:lastInput,session:currentSession};activeJob=token;delete mic.dataset.error;
+    const selected=lastInput,target=destination(selected);if(!target){message('Click a text field or terminal, then tap the microphone.');return;}
+    // Focus tracking chooses the next recording. This one retains its own target.
+    const token={window:selected.win,session:currentSession};activeJob=token;delete mic.dataset.error;
     try{
       const module=await loadSpeech();if(activeJob!==token||currentSession!==token.session)return;
-      const valid=()=>activeJob===token&&currentSession===token.session&&target.element.isConnected&&lastInput===token.selection&&lastInput.win.isConnected&&!lastInput.win.hidden&&target.valid();
+      const valid=()=>activeJob===token&&currentSession===token.session&&token.window.isConnected&&target.element.isConnected&&target.valid();
       let delivery,deliveryError;
       await module.toggleVoice({terminal:target.element,status,sessionValid:valid,insert:text=>{
         if(valid())delivery=Promise.resolve(target.insert(text)).catch(error=>{deliveryError=error;});
