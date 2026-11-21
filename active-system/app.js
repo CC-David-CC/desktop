@@ -706,7 +706,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)for(const s
 document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const desktop of surfaces.values())desktop.closePopups();});
 function initializeVoiceControl(){
   const dock=make('div','voice-control');dock.id='voice-control';
-  const note=make('span','voice-note','Loading voice…');note.setAttribute('role','status');note.setAttribute('aria-live','polite');
+  const note=make('span','voice-note','Select a text field, then tap the microphone.');note.setAttribute('role','status');note.setAttribute('aria-live','polite');
   const microphone='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></svg>';
   const stopIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg>';
   const mic=button('Start voice input',null,'voice-button');mic.title='Tap to start voice input';mic.innerHTML=microphone;
@@ -729,13 +729,10 @@ function initializeVoiceControl(){
     mic.title=listening?'Tap to stop recording':busy?'Tap to cancel':'Tap to start voice input';
     message(text||'Tap microphone to talk');
   };
-  const moduleReady=import(new URL('assets/speech/client.mjs',document.baseURI)).then(module=>{
-    speech=module;
-    module.preloadVoice(text=>{if(!activeJob&&!busy){dock.dataset.state='loading';message(text);}}).then(()=>{if(!busy){dock.dataset.state='ready';message('Voice ready · tap microphone');}}).catch(()=>{if(!busy){dock.dataset.state='ready';message('Tap microphone to retry loading');}});
-    return module;
-  }).catch(error=>{mic.dataset.error=error.message;message('Voice could not load. Refresh to retry.');throw error;});
-  // The promise is also awaited on a gesture; avoid an unhandled preload error.
-  moduleReady.catch(()=>{});
+  async function loadSpeech(){
+    speech ??= await import(new URL('assets/speech/client.mjs',document.baseURI));
+    return speech;
+  }
   function destination(){
     const win=document.querySelector('.window.focused:not([hidden])');
     if(!win)return null;
@@ -760,10 +757,10 @@ function initializeVoiceControl(){
     if(activeJob)return;
     const target=destination();if(!target){message('Click a text field or terminal, then tap the microphone.');return;}
     if(onScreenKeyboardEnabled)setScreenKeyboardEnabled(false);
-    const token={target,session:currentSession?.id};activeJob=token;delete mic.dataset.error;
+    const token={target,session:currentSession};activeJob=token;delete mic.dataset.error;
     try{
-      const module=await moduleReady;if(activeJob!==token)return;
-      await module.toggleVoice({terminal:target.element,status,insert:text=>{if(target.valid())target.insert(text);else message('Text changed while listening. Voice text was discarded.');},sessionValid:()=>currentSession?.id===token.session&&target.valid()});
+      const module=await loadSpeech();if(activeJob!==token||currentSession!==token.session)return;
+      await module.toggleVoice({terminal:target.element,status,insert:text=>{if(target.valid())target.insert(text);else message('Text changed while listening. Voice text was discarded.');},sessionValid:()=>currentSession===token.session&&target.element.isConnected&&target.valid()});
     }catch(error){mic.dataset.error=error.message;status(error.name==='NotAllowedError'?'Allow microphone access, then tap the microphone again.':error.message||'Voice input failed.');}
     finally{if(activeJob===token)activeJob=null;}
   }
