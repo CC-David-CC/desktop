@@ -713,11 +713,57 @@ function initializeVoiceControl(){
   dock.hidden=true;
   dock.append(note,mic);document.body.append(dock);
   let lastInput=null,activeJob=null,phase='',speech,busy=false,noticeTimer;
-  const editable=el=>el instanceof HTMLElement&&!el.disabled&&!el.readOnly&&(el.matches('textarea,input:not([type]),input[type=text],input[type=search],input[type=url],input[type=email],input[type=tel]')||el.isContentEditable);
-  document.addEventListener('focusin',e=>{if(editable(e.target)||e.target.matches?.('[data-serial-view]')){lastInput=e.target;applyScreenKeyboardPolicy(e.target);}});
-  document.addEventListener('pointerdown',e=>{const field=e.target.closest?.('input,textarea,[contenteditable]');if(field)applyScreenKeyboardPolicy(field);},true);
-  const inputObserver=new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node instanceof HTMLElement)applyScreenKeyboardPolicy(node);});
-  inputObserver.observe(document.querySelector('#previews'),{childList:true,subtree:true});
+  const editable=el=>el?.nodeType===1&&!el.disabled&&!el.readOnly&&
+    (el.matches('textarea,input:not([type]),input[type=text i],input[type=search i],input[type=url i],input[type=email i],input[type=tel i]')||el.isContentEditable);
+  const ranges=new WeakMap(), observedDocuments=new WeakSet();
+  function remember(el,win){
+    if(!win)return;
+    if(lastInput?.el!==el||lastInput?.win!==win)lastInput={el,win};
+    if(editable(el)&&el.ownerDocument===document)applyScreenKeyboardPolicy(el);
+  }
+  function observeInputs(doc,ownerWindow){
+    if(!doc||observedDocuments.has(doc))return;
+    observedDocuments.add(doc);
+    const owner=el=>ownerWindow||el?.closest?.('.window,dialog,[role=dialog]')||
+      (el?.matches?.('input,textarea,[contenteditable]')?el.closest('#previews'):null);
+    function track(event){
+      const path=event.composedPath(), el=path[0];
+      if(path.includes(dock))return;
+      const win=owner(el)||path.find(node=>node?.matches?.('.window'));
+      if(!win)return;
+      const target=path.find(node=>node?.matches?.('[data-serial-view],[data-webos-voice-target],input,textarea,[contenteditable]'));
+      if(target&&!target.matches('[data-serial-view],[data-webos-voice-target]')&&!editable(target)){remember(null,win);return;}
+      if(target)remember(target,win);
+      else if(lastInput?.win!==win||el?.matches?.('input,textarea,select,[contenteditable=false]'))remember(null,win);
+    }
+    doc.addEventListener('focusin',track,true);
+    doc.addEventListener('pointerdown',track,true);
+    doc.addEventListener('selectionchange',()=>{
+      const sel=doc.getSelection(),el=lastInput?.el;
+      if(el?.isContentEditable&&sel?.rangeCount&&el.contains(sel.anchorNode)&&el.contains(sel.focusNode))ranges.set(el,sel.getRangeAt(0).cloneRange());
+    });
+    function observeFrame(frame){
+      const win=owner(frame);
+      if(!win)return;
+      if(frame.matches('[data-webos-voice-target]')){
+        for(const event of ['pointerdown','focusin'])frame.contentDocument?.addEventListener(event,()=>remember(frame,win),true);
+      }else if(frame.contentDocument)observeInputs(frame.contentDocument,win);
+    }
+    doc.addEventListener('load',e=>{if(e.target?.localName==='iframe')observeFrame(e.target);},true);
+    doc.querySelectorAll('iframe').forEach(observeFrame);
+  }
+  observeInputs(document,null);
+  const inputObserver=new MutationObserver(records=>{
+    // A modal makes controls outside it inert. Keep the microphone usable
+    // while an app asks the user to type a filename or another value.
+    if(!dock.isConnected||records.some(record=>record.attributeName==='open'||[...record.addedNodes].some(node=>node.matches?.('dialog[open]')))){
+      const container=document.querySelector('#previews dialog:modal')||document.body;
+      if(dock.parentNode!==container){container.append(dock);position();}
+    }
+    if(lastInput&&(!lastInput.win.isConnected||!lastInput.el?.isConnected))lastInput=null;
+    for(const record of records)for(const node of record.addedNodes)if(node instanceof HTMLElement)applyScreenKeyboardPolicy(node);
+  });
+  inputObserver.observe(document.querySelector('#previews'),{childList:true,subtree:true,attributes:true,attributeFilter:['open']});
   setScreenKeyboardEnabled(true);
   const message=text=>{clearTimeout(noticeTimer);note.textContent=text;note.hidden=!text;position();if(text&&!busy)noticeTimer=setTimeout(()=>{note.hidden=true;},4000);};
   const status=text=>{
@@ -734,33 +780,53 @@ function initializeVoiceControl(){
     return speech;
   }
   function destination(){
-    const win=document.querySelector('.window.focused:not([hidden])');
-    if(!win)return null;
-    const input=lastInput?.isConnected&&win.contains(lastInput)?lastInput:win.querySelector('.guest-editor,.terminal-input')||win.querySelector('textarea:not([readonly]),input:not([type]),input[type=text]');
-    if(!input)return null;
+    const selected=lastInput;
+    if(!selected)return null;
+    const {el:input,win}=selected;
+    if(!input?.isConnected||!win.isConnected||win.hidden||!input.getClientRects().length||input.closest('[inert],[hidden]'))return null;
+    if(typeof input.codiVoiceCapture==='function')return input.codiVoiceCapture();
     if(input.matches('.terminal-input,[data-serial-view]')){
       const vm=v86Instance;if(guestState!=='ready'||!vm)return null;
       const id=Number(win.dataset.window),session=terminalSessions.get(id);
       return {element:input,valid:()=>v86Instance===vm&&guestState==='ready'&&terminalSessions.get(id)===session&&!session?.exited,insert:text=>{win.querySelector('[data-serial-view]')?.followOutput?.();insertTerminalText(id,text);}};
     }
     if(!editable(input))return null;
-    if(typeof input.codiVoiceCapture==='function')return input.codiVoiceCapture();
     if(input.isContentEditable){
-      const selection=getSelection();if(!selection?.rangeCount||!input.contains(selection.anchorNode))return null;
-      const range=selection.getRangeAt(0).cloneRange(),before=input.textContent;
-      return {element:input,valid:()=>input.textContent===before,insert:text=>{range.deleteContents();const node=document.createTextNode(text);range.insertNode(node);range.setStartAfter(node);range.collapse(true);if(document.activeElement===input){selection.removeAllRanges();selection.addRange(range);}input.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));}};
+      const doc=input.ownerDocument,selection=doc.getSelection();
+      const range=selection?.rangeCount&&input.contains(selection.anchorNode)&&input.contains(selection.focusNode)?selection.getRangeAt(0).cloneRange():ranges.get(input)?.cloneRange();
+      if(!range)return null;
+      const before=input.textContent;
+      return {element:input,valid:()=>input.textContent===before&&input.contains(range.commonAncestorContainer),insert:text=>{
+        input.focus({preventScroll:true});selection.removeAllRanges();selection.addRange(range);
+        if(!doc.execCommand('insertText',false,text))throw Error('The selected editor could not insert the transcript.');
+      }};
     }
-    const before=input.value,start=input.selectionStart??before.length,end=input.selectionEnd??start;
-    return {element:input,valid:()=>input.value===before,insert:text=>{if(input.selectionStart===null)input.value=before.slice(0,start)+text+before.slice(end);else input.setRangeText(text,start,end,'end');input.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText',data:text}));}};
+    const before=input.value,start=input.selectionStart,end=input.selectionEnd;
+    return {element:input,valid:()=>editable(input)&&input.value===before&&input.selectionStart===start&&input.selectionEnd===end,insert:text=>{
+      if(start===null){
+        input.focus({preventScroll:true});
+        if(!input.ownerDocument.execCommand('insertText',false,text))throw Error('The selected field could not insert the transcript.');
+      }else{
+        input.setRangeText(text,start,end,'end');
+        input.dispatchEvent(new InputEvent('input',{bubbles:true,composed:true,inputType:'insertText',data:text}));
+      }
+    }};
   }
   async function begin(){
     if(activeJob)return;
     const target=destination();if(!target){message('Click a text field or terminal, then tap the microphone.');return;}
-    if(onScreenKeyboardEnabled)setScreenKeyboardEnabled(false);
-    const token={target,session:currentSession};activeJob=token;delete mic.dataset.error;
+    const token={target,selection:lastInput,session:currentSession};activeJob=token;delete mic.dataset.error;
     try{
       const module=await loadSpeech();if(activeJob!==token||currentSession!==token.session)return;
-      await module.toggleVoice({terminal:target.element,status,insert:text=>{if(target.valid())target.insert(text);else message('Text changed while listening. Voice text was discarded.');},sessionValid:()=>currentSession===token.session&&target.element.isConnected&&target.valid()});
+      const valid=()=>activeJob===token&&currentSession===token.session&&target.element.isConnected&&lastInput===token.selection&&lastInput.win.isConnected&&!lastInput.win.hidden&&target.valid();
+      let delivery,deliveryError;
+      await module.toggleVoice({terminal:target.element,status,sessionValid:valid,insert:text=>{
+        if(valid())delivery=Promise.resolve(target.insert(text)).catch(error=>{deliveryError=error;});
+      }});
+      await delivery;
+      if(deliveryError)throw deliveryError;
+      if(activeJob===token&&!delivery&&!valid())message('The selected input changed. Voice text was discarded.');
+
     }catch(error){mic.dataset.error=error.message;status(error.name==='NotAllowedError'?'Allow microphone access, then tap the microphone again.':error.message||'Voice input failed.');}
     finally{if(activeJob===token)activeJob=null;}
   }
@@ -775,7 +841,7 @@ function initializeVoiceControl(){
   mic.addEventListener('click',()=>{if(ignoreMicClick){ignoreMicClick=false;return;}if(/Listening/.test(phase))speech?.stopVoice();else if(activeJob||busy){speech?.cancelVoice();activeJob=null;status('Voice cancelled.');}else begin();});
   mic.addEventListener('contextmenu',e=>e.preventDefault());
   document.addEventListener('visibilitychange',()=>{if(document.hidden){speech?.cancelVoice();activeJob=null;}});
-  document.addEventListener('codi-desktop-blocked',()=>{speech?.cancelVoice();activeJob=null;});
+  document.addEventListener('codi-desktop-blocked',()=>{lastInput=null;speech?.cancelVoice();activeJob=null;});
   voiceControl={toggle(){dock.hidden=!dock.hidden;if(dock.hidden){speech?.cancelVoice();activeJob=null;}else position();}};
   visualViewport?.addEventListener('resize',position);visualViewport?.addEventListener('scroll',position);window.addEventListener('resize',position);position();
 }

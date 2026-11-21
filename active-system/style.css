@@ -192,7 +192,7 @@ html.login-required #previews, html.login-required #voice-control { visibility: 
 .status-popup,.task-popup{width:300px}
 #previews>.viewport{overflow:clip}
 .panel .account .account-label,.compact-desktop .account .account-label{min-width:0;width:100%}
-body:has(.desktop .popup) .voice-control{visibility:hidden;pointer-events:none}
+body:has(.desktop .popup):not(:has(.desktop .popup :is(input,textarea,[contenteditable]):focus-within)) .voice-control{visibility:hidden;pointer-events:none}
 .desktop{overflow:clip}
 .panel .account,.compact-desktop .panel .account{min-width:0}
 /* Compact controls sit next to the launcher at the bottom of the rail. */
