@@ -118,10 +118,16 @@ async function workspaceFileContext() {
   if (!valid()) throw new DOMException('Guest session ended.', 'AbortError');
   let workspace = temporaryWorkspaces.get(session);
   if (!workspace) {
-    workspace = createTemporaryFiles(valid);
+    workspace = {...createTemporaryFiles(valid), writers:new Set(), transferring:false};
     temporaryWorkspaces.set(session,workspace);
   }
-  return {owner:session.public.sub, files:workspace.files, valid};
+  return {owner:session.public.sub, files:workspace.files, valid,
+    registerFileWriter(pause) {
+      if (!valid() || workspace.transferring) throw Error('The Files workspace is changing.');
+      workspace.writers.add(pause);
+      return () => workspace.writers.delete(pause);
+    }
+  };
 }
 
 function appInput(label,value=''){const n=make('input');n.value=value;n.setAttribute('aria-label',label);return n;}

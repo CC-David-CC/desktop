@@ -1017,7 +1017,8 @@ async function restoreOrStartGuestSession(){
 let guestPromotion = null;
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
   if(accountTransition||sessionEnding)throw Error('An account change is already in progress.');
-  accountTransition=true;let approved, pausedGuest, thawGuest;
+  accountTransition=true;let approved, pausedGuest, thawGuest, transferringWorkspace;
+  const resumeFileWriters=[];
   try{
     const prior=currentSession;approved=prior?await confirmSessionEnd():{initial:[],tracker:trackSessionEdits()};
     if(!approved||currentSession!==prior)return;
@@ -1039,6 +1040,9 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
           await guestAccountDevice?.flush();
         }
         const guest = temporaryWorkspaces.get(previous);
+        transferringWorkspace=guest;
+        guest.transferring=true;
+        for (const pause of guest.writers) resumeFileWriters.push(await pause());
         thawGuest = guest.freeze();
         const files=new accountServices.UserFiles(sessionAccounts.get(next).createFileAuthority());
         await promoteGuestHome(guest.files,files);
@@ -1059,13 +1063,20 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     }
     // Let abort handlers terminate their workers before installing the next session.
     closeAccountMirror({suspend:true});await Promise.resolve();closeBrowserSourcePages();currentSession=sessionViews(next);
+    startMirror();
     loadAccountPanelPins();
     // This release uses the shared server-authoritative account file service.
     guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
-  }finally{thawGuest?.();if(pausedGuest && pausedGuest===v86Instance)await pausedGuest.request('resumeGuest').catch(error=>feedback(error.message));approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
+  }finally{
+    thawGuest?.();
+    if(transferringWorkspace)transferringWorkspace.transferring=false;
+    for(const resume of resumeFileWriters.reverse()){
+      try{await resume();}catch(error){feedback(error.message);}
+    }
+    if(pausedGuest && pausedGuest===v86Instance)await pausedGuest.request('resumeGuest').catch(error=>feedback(error.message));approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
 }
 async function maintainIdentity(){
   if(!currentSession||renewingIdentity||accountTransition)return;
