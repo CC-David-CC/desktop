@@ -22,22 +22,28 @@ function fixture(kind) {
 }
 
 for (const kind of ['anonymous', 'registered']) {
-  test('ACAD opens a selected revision for a ' + kind + ' workspace', () => {
-    const {desktop, owner} = fixture(kind);
-    const storage = kind === 'anonymous' ? 'temporary' : 'mirror';
-    const resource = {owner, storage, version: 1, sha256: 'a'.repeat(64), path: '/Documents/part.cad'};
-    for (const change of [
-      {owner: 'other'}, {sha256: 'invalid'}, {path: '/../outside.cad'},
-      {storage: storage === 'mirror' ? 'temporary' : 'mirror'}
-    ]) {
-      assert.throws(() => desktop.open('jsketcher', {...resource, ...change}));
-    }
-    assert.equal(desktop.windows.length, 0);
-    const w = desktop.open('jsketcher', resource);
-    assert.equal(w.launchContext.sha256, resource.sha256);
-    assert.equal(w.launchContext.owner, owner);
-    assert.equal(w.launchContext.storage, storage);
-    assert.equal(desktop.open('jsketcher', resource), w);
-    assert.equal(desktop.windows.length, 1);
-  });
+  for (const [app, path] of [['jsketcher', '/Documents/part.cad'], ['calculator', '/Documents/graph.calc.json']]) {
+    test(app + ' opens a selected revision for a ' + kind + ' workspace', () => {
+      const {desktop, owner} = fixture(kind);
+      const storage = kind === 'anonymous' ? 'temporary' : 'mirror';
+      const resource = {owner, storage, version: 1, sha256: 'a'.repeat(64), path};
+      for (const change of [
+        {owner: 'other'}, {sha256: 'invalid'}, {path: '/../outside.cad'},
+        {storage: storage === 'mirror' ? 'temporary' : 'mirror'}
+      ]) {
+        assert.throws(() => desktop.open(app, {...resource, ...change}));
+      }
+      if (app === 'calculator') {
+        const {sha256, ...withoutRevision} = resource;
+        assert.throws(() => desktop.open(app, withoutRevision));
+      }
+      assert.equal(desktop.windows.length, 0);
+      const w = desktop.open(app, resource);
+      assert.equal(w.launchContext.sha256, resource.sha256);
+      assert.equal(w.launchContext.owner, owner);
+      assert.equal(w.launchContext.storage, storage);
+      assert.equal(desktop.open(app, resource), w);
+      assert.equal(desktop.windows.length, 1);
+    });
+  }
 }
