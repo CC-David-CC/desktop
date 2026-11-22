@@ -552,8 +552,12 @@ class Desktop {
   localLeft(anchor) { if(!anchor)return 20;return Math.max(0,Math.min(resolution[0]-305,(anchor.getBoundingClientRect().left-this.root.getBoundingClientRect().left)/this.scaleFactor)); }
   localTop(anchor) {return anchor?(anchor.getBoundingClientRect().top-this.root.getBoundingClientRect().top)/this.scaleFactor:0;}
   appendNetworkInfo(popup){
-    const network=guestNetworkForSession();
-    popup.append(make('h4','','Network'),make('div','status-line','Browser: '+(navigator.onLine?'online':'offline')),make('p','',network?'Guest Internet is configured for this account.':'Guest networking: loopback only. Try ping -c 2 localhost.'));
+    const session=currentSession;
+    const status=make('p','','Guest networking: loopback only. Try ping -c 2 localhost.');
+    popup.append(make('h4','','Network'),make('div','status-line','Browser: '+(navigator.onLine?'online':'offline')),status);
+    guestNetworkAuthority(session)?.status().then(expires=>{
+      if(expires&&currentSession===session&&status.isConnected)status.textContent='Guest networking is available for this account.';
+    }).catch(()=>{});
   }
   showStatus(type,anchor) {
     const popup=make('div','status-popup popup');popup.dataset.statusType=type;popup.style.top=this.localTop(anchor)+'px';
@@ -903,7 +907,7 @@ async function recoverDesktopSession(){
   try{
     const {refreshRecoveryPolicy}=await import('./assets/desktop/recovery-policy.mjs');
     await refreshRecoveryPolicy(identityConfig);
-    try{await renewAccountSession(currentSession);guestNetworkAdapter?.syncSession();}
+    try{await renewAccountSession(currentSession);}
     catch(error){
       if(error.status!==401)throw error;
       await endSession();
@@ -1061,7 +1065,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     if((approved.tracker.changed()||!sameDirtyWindows(approved.initial,sessionDirtyWindows()))){await logoutAccountSession(next).catch(()=>{});feedback('Work changed during sign-out. Your previous server session may have ended; recover your work.');return;}
     try{for(const surface of surfaces.values())for(const win of surface.root.querySelectorAll('.window'))disposeSessionView(win,'Account changing');}
     catch(error){console.warn('Account-change cleanup failed:',error);await logoutAccountSession(next).catch(()=>{});feedback('The previous server session ended, but window cleanup was incomplete. Some windows may have closed; copy remaining work before reloading. The next session may still be active.');return;}
-    if(previous&&previous.public?.sub!==next.public?.sub){
+    if(previous&&(previous.public?.sub!==next.public?.sub||guestNetworkAdapter)){
       stopGuest();
       guestPromotion=null;
       for(const id of terminalSessions.keys())closeTerminal(id);
@@ -1071,7 +1075,6 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     startMirror();
     loadAccountPanelPins();
     // This release uses the shared server-authoritative account file service.
-    guestNetworkAdapter?.syncSession();
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
@@ -1091,14 +1094,11 @@ async function maintainIdentity(){
   renewingIdentity=true;
   try{
     await renewAccountSession(session);
-    if(currentSession===session){
-      guestNetworkAdapter?.syncSession();
-    }
   }catch(error){
     if(currentSession===session){
       const expired=expiry<=Date.now()/1000;
       feedback('Identity renewal failed: '+error.message);
-      if(expired)guestNetworkAdapter?.reset();
+      if(expired)guestNetworkAdapter?.destroy();
     }
   }finally{renewingIdentity=false;for(const surface of surfaces.values())if(surface.appIdentity!==signedInSubject())surface.render();}
 }
@@ -1109,9 +1109,25 @@ let guestBootTimer=null;
 function useAccountGuestHome(){
   return viewerProfile.accountGuestHome===true&&(currentSession?.public.kind==='anonymous'||serverFilesAvailable()&&!!signedInSubject());
 }
-function guestNetworkForSession(){
-  const owner=signedInSubject(),network=identityConfig?.guestNetwork;
-  return owner&&network?.allowedSubject===owner&&network.authorization?network:null;
+function guestNetworkAuthority(session){
+  if(!identityConfig?.guestNetwork||currentSession!==session||!signedInSubject())return null;
+  try{return sessionAccounts.get(session)?.createGuestNetworkAuthority()??null;}
+  catch{return null;}
+}
+async function prepareGuestNetwork(signal){
+  const session=currentSession,authority=guestNetworkAuthority(session);
+  if(!authority)return null;
+  try{
+    if(!await authority.status({signal})||currentSession!==session)return null;
+    const {connectGuestNetwork}=await import('./assets/desktop/guest-network.mjs');
+    signal?.throwIfAborted();
+    if(currentSession!==session)return null;
+    return (emulator,onStatus)=>connectGuestNetwork(emulator,authority,{signal,onStatus});
+  }catch(error){
+    if(signal?.aborted)throw error;
+    if(currentSession===session)feedback('Guest networking is unavailable. You can still use Linux locally.');
+    return null;
+  }
 }
 function stopGuest(){
   ++bootEpoch;
@@ -1160,11 +1176,7 @@ async function startGuest(){
   guestBootRequest=request;
   try{
     guestState='starting';guestMessage='Loading local Linux kernel and initramfs…';refreshTerminals();
-    const networkConfig=guestNetworkForSession();
-    if(networkConfig){
-      const cookie=await fetch('codi-guest-cookie',{credentials:'same-origin',cache:'no-store',redirect:'error',signal:request.signal});
-      if(!cookie.ok)throw Error('Linux network connection could not be initialized.');
-    }
+    const attachNetwork=await prepareGuestNetwork(request.signal);
     const imageResponse=await fetch('assets/terminal/v2/image.json',{cache:'no-store',signal:request.signal});
     if(!imageResponse.ok)throw Error('The terminal guest image manifest is unavailable.');
     const image=await imageResponse.json();
@@ -1175,14 +1187,7 @@ async function startGuest(){
       if(!response.ok)throw Error('Missing guest asset '+name+' (HTTP '+response.status+').');
     }));
     if(epoch!==bootEpoch)return;
-    const relayPath=networkConfig?.relayPath;
     const pageBase=new URL('.',location.href).pathname.replace(/\/$/,'');
-    if(relayPath!==undefined&&relayPath!==pageBase+'/guest-network')throw Error('Invalid guest relay path');
-    const relay=relayPath?new URL(relayPath,location.origin):null;if(relay)relay.protocol=location.protocol==='https:'?'wss:':'ws:';
-    const controlled=networkConfig?.authorization!==undefined;
-    if(controlled&&!relay)throw Error('Guest authorization requires a relay');
-    const GuestNetworkAdapter=controlled?(await import(pageBase+'/guest-access/client.mjs')).GuestNetworkAdapter:null;
-    if(epoch!==bootEpoch)return;
     if(useAccountGuestHome()){
       const [context,{createAccountHome},{createAccountHome9p}]=await Promise.all([
         workspaceFileContext(),import('./storage/browser/account-home.mjs'),import('./assets/desktop/account-home-9p.mjs')
@@ -1207,10 +1212,12 @@ async function startGuest(){
     const options={wasm_path:new URL(runtime+'v86.wasm',document.baseURI).href,memory_size:256*1024*1024,
       bios:{url:new URL(runtime+'seabios.bin',document.baseURI).href},vga_bios:{url:new URL(runtime+'vgabios.bin',document.baseURI).href},
       bzimage:{url:new URL(runtime+'vmlinuz',document.baseURI).href},initrd:{url:new URL(image.path,document.baseURI).href},
-      ...(relay?{net_device:controlled?{type:'virtio'}:{type:'virtio',relay_url:relay.href}}:{}),
-      filesystem:{},cmdline:'console=ttyS0,115200n8 rdinit=/init panic=-1 quiet loglevel=0'+(relay?' guest_net=1':''),autostart:true,disable_keyboard:true,disable_mouse:true,disable_speaker:true};
+      ...(attachNetwork?{net_device:{type:'virtio'}}:{}),
+      filesystem:{},cmdline:'console=ttyS0,115200n8 rdinit=/init panic=-1 quiet loglevel=0'+(attachNetwork?' guest_net=1':''),autostart:true,disable_keyboard:true,disable_mouse:true,disable_speaker:true};
     v86Instance=emulator;
-    if(controlled)guestNetworkAdapter=new GuestNetworkAdapter(emulator,identityConfig,{getSession:()=>currentSession,onStatus:value=>{if(value.mode==='disconnected')feedback('Linux Internet is unavailable; retrying. Browser files remain available.');}});
+    if(attachNetwork)guestNetworkAdapter=attachNetwork(emulator,({mode})=>{
+      if(mode==='disconnected')feedback('Linux networking is unavailable. Retrying while Linux stays open.');
+    });
     emulator.add_listener('download-error',event=>{if(epoch===bootEpoch)failGuest('Could not load '+event.file_name+'. Check that the static server is running.');});
     guestBootTimer=setTimeout(()=>{if(epoch===bootEpoch&&!bootFailed&&guestState!=='ready')feedback('Linux is still starting. Keep this tab active; slower devices may need more time.');},60000);
     emulator.add_listener('serial0-output-byte',byte=>{if(epoch!==bootEpoch)return;receiveGuestSerial(String.fromCharCode(byte));});
@@ -1218,7 +1225,7 @@ async function startGuest(){
       if(epoch!==bootEpoch)return;
       guestState='booting';
       guestMessage=guestAccountDevice?'Mounting My files as Linux home…':'Starting Linux and temporary home…';
-      if(!guestAccountDevice)guestFiles.connect(emulator,{networkRelay:!!relay}).then(async()=>{
+      if(!guestAccountDevice)guestFiles.connect(emulator,{networkRelay:!!attachNetwork}).then(async()=>{
         if(epoch===bootEpoch)await emulator.create_file('/session.json',new TextEncoder().encode(JSON.stringify({
           sessionId:currentSession.id,kind:currentSession.kind,displayName:currentSession.displayName
         })));
