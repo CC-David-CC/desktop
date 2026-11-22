@@ -30,3 +30,10 @@ test('qualifying the next two apps enables only them while retaining unsupported
     const entry=entries.find(entry=>entry.name===name);assert.ok(entry,name);assert.ok(menuDisabledTitle(entry),name);
   }
 });
+
+test('Office offers NoteCraft when its qualified package is present',()=>{
+  const off=fixture([]),on=fixture(['notecraft']);
+  assert.equal(off.desktopMenu.find(e=>e.name==='Office').children.some(e=>e.name==='NoteCraft'),false);
+  const entry=on.desktopMenu.find(e=>e.name==='Office').children.find(e=>e.name==='NoteCraft');
+  assert.ok(entry);assert.equal(on.applicationIds[entry.name],'notecraft');assert.equal(on.menuDisabledTitle(entry),null);
+});

@@ -48,7 +48,7 @@ test('Account document windows restore exact account resource, draft and geometr
 
 test('all account document hosts update canonical titles/revisions and activate one existing view across screens',()=>{
   const f=fixture(),a=f.desktop(),b=f.desktop();
-  for(const [app,name] of Object.entries(editors)) {
+  for(const [app,name] of Object.entries({...editors,notecraft:'NoteCraft'})) {
     const w=a.launch(app,'Untitled');a.updateAccountFileBinding(w,{owner:'account-A',path:'Documents/'+app+'.data',sha256:sha});
     assert.equal(w.title,app+'.data — '+name);
     assert.equal(b.openAccountFile(app,{owner:'account-A',path:w.launchContext.path,sha256:sha}),w);
@@ -65,6 +65,17 @@ test('canonical resource validation rejects traversal and unconfirmed revisions 
     assert.throws(()=>d.openAccountFile('gridcraft',resource),/account file/);
   }
   assert.equal(d.windows.length,0);
+});
+
+test('NoteCraft restores the saved notebook for its own account',()=>{
+  const f=fixture(),d=f.desktop();
+  const w=d.launch('notecraft','NoteCraft');
+  d.updateAccountFileBinding(w,{owner:'account-A',path:'Notes/Field.notecraft',sha256:sha});
+  assert.equal(d.saveLayout(),true);
+  const restored=f.desktop();restored.layoutOwner=null;restored.restoreLayout();
+  const [note]=restored.windows;
+  assert.equal(note.app,'notecraft');assert.equal(note.launchContext.path,'Notes/Field.notecraft');
+  assert.equal(note.launchContext.sha256,sha);assert.equal(note.launchContext.restore,true);
 });
 
 test('learning games bind one Files window to the current owner and restore its revision',()=>{
