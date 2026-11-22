@@ -1036,6 +1036,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
         if (v86Instance) {
           pausedGuest=v86Instance;
           await pausedGuest.request('pauseGuest');
+          await guestAccountDevice?.flush();
         }
         const guest = temporaryWorkspaces.get(previous);
         thawGuest = guest.freeze();
