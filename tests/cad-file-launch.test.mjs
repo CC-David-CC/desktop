@@ -22,7 +22,8 @@ function fixture(kind) {
 }
 
 for (const kind of ['anonymous', 'registered']) {
-  for (const [app, path] of [['jsketcher', '/Documents/part.cad'], ['calculator', '/Documents/graph.calc.json']]) {
+  for (const [app, path] of [['jsketcher', '/Documents/part.cad'], ['image-editor','/Pictures/test.png'], ['svg-editor','/Pictures/test.svg'],
+    ['excalidraw','/Documents/test.excalidraw'], ['diagrams-net','/Documents/test.drawio'], ['calculator', '/Documents/graph.calc.json']]) {
     test(app + ' opens a selected revision for a ' + kind + ' workspace', () => {
       const {desktop, owner} = fixture(kind);
       const storage = kind === 'anonymous' ? 'temporary' : 'mirror';
