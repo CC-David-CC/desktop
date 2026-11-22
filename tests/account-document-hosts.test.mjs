@@ -48,7 +48,7 @@ test('Account document windows restore exact account resource, draft and geometr
 
 test('all account document hosts update canonical titles/revisions and activate one existing view across screens',()=>{
   const f=fixture(),a=f.desktop(),b=f.desktop();
-  for(const [app,name] of Object.entries({...editors,notecraft:'NoteCraft'})) {
+  for(const [app,name] of Object.entries({...editors,paintcraft:'PaintCraft',notecraft:'NoteCraft'})) {
     const w=a.launch(app,'Untitled');a.updateAccountFileBinding(w,{owner:'account-A',path:'Documents/'+app+'.data',sha256:sha});
     assert.equal(w.title,app+'.data — '+name);
     assert.equal(b.openAccountFile(app,{owner:'account-A',path:w.launchContext.path,sha256:sha}),w);
