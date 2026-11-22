@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../active-system/app.js',import.meta.url),'utf8');
 const start=source.indexOf('class Desktop {'),end=source.indexOf('\n}\n',start)+2;
-const editorDefinitions=source.match(/^const (?:layerAccountApps|accountDocumentNames)=.*;$/gm).join('\n');
+const editorDefinitions=source.slice(source.indexOf('const layerAccountApps='),source.indexOf('async function renewAccountSession('));
 const editors={text:'Text Editor',wordcraft:'WordCraft',pdfcraft:'PdfCraft',gridcraft:'GridCraft',deckcraft:'DeckCraft',
   photocraft:'PhotoCraft',vectorcraft:'VectorCraft',figcraft:'FigCraft',anicraft:'AniCraft',lightcraft:'LightCraft',
   designcraft:'DesignCraft',soundcraft:'SoundCraft',filmcraft:'FilmCraft',effectcraft:'EffectCraft',cadcraft:'CADCraft',texturecraft:'TextureCraft',materialcraft:'MaterialCraft',sketchcraft:'SketchCraft',solidcraft:'SolidCraft',pcbcraft:'PCBCraft',fieldcraft:'FieldCraft'};
@@ -13,7 +13,7 @@ const sha='a'.repeat(64),draft='12345678-1234-1234-1234-123456789abc';
 function fixture() {
   let owner='account-A';const storage=new Map(),surfaces=new Map();
   const context=vm.createContext({console,location:{origin:'https://webos.test'},identityConfig:null,surfaces,
-    signedInSubject:()=>owner,accountWindow:w=>!w.ownerSub||w.ownerSub===owner,isAccountApp:()=>false,
+    signedInSubject:()=>owner,workspaceOwner:()=>owner,accountWindow:w=>!w.ownerSub||w.ownerSub===owner,isAccountApp:()=>false,
     enabledApp:()=>true,windowRect:w=>({x:w.x,y:w.y,w:w.w,h:w.h}),
     localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},
     feedback:message=>{throw Error(message);}});
@@ -65,4 +65,14 @@ test('canonical resource validation rejects traversal and unconfirmed revisions 
     assert.throws(()=>d.openAccountFile('gridcraft',resource),/account file/);
   }
   assert.equal(d.windows.length,0);
+});
+
+test('learning games bind one Files window to the current owner and restore its revision',()=>{
+  const f=fixture(),d=f.desktop(),id='fraction-farm',path='Documents/Round.fraction-farm.json';
+  const w=d.openAccountFile(id,{owner:'account-A',path,sha256:sha});
+  assert.equal(w.title,'Round.fraction-farm.json — Fraction Farm');
+  assert.equal(d.openAccountFile(id,{owner:'account-A',path,sha256:sha}),w);
+  const other=f.desktop();other.layoutOwner=null;other.restoreLayout();
+  assert.equal(other.windows[0].launchContext.sha256,sha);
+  assert.equal(other.windows[0].launchContext.restore,true);
 });
