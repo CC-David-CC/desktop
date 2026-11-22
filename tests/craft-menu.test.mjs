@@ -8,7 +8,8 @@ const start=source.indexOf('const desktopMenu=['),policy=source.indexOf('functio
 const selected={WordCraft:'wordcraft',PdfCraft:'pdfcraft',GridCraft:'gridcraft',DeckCraft:'deckcraft',PhotoCraft:'photocraft',VectorCraft:'vectorcraft',DesignCraft:'designcraft',FigCraft:'figcraft',AniCraft:'anicraft',LightCraft:'lightcraft',FilmCraft:'filmcraft',EffectCraft:'effectcraft',SoundCraft:'soundcraft',CADCraft:'cadcraft',SolidCraft:'solidcraft',PCBCraft:'pcbcraft',FieldCraft:'fieldcraft',SketchCraft:'sketchcraft',TextureCraft:'texturecraft',MaterialCraft:'materialcraft'};
 function fixture(ids) {
   const context=vm.createContext({reference:{icons:{}},viewerProfile:{speech:false},enabledApp:id=>ids.includes(id)});
-  return vm.runInContext(source.slice(start,end)+';({desktopMenu,applicationIds,menuDisabledTitle})',context);
+  const apps=source.match(/^const drakonApps\s*=.*;$/m)[0];
+  return vm.runInContext(apps+'\n'+source.slice(start,end)+';({desktopMenu,applicationIds,menuDisabledTitle})',context);
 }
 function leaves(entries){return entries.flatMap(entry=>entry.children?leaves(entry.children):entry.separator?[]:[entry]);}
 
@@ -28,4 +29,11 @@ test('qualifying the next two apps enables only them while retaining unsupported
   for(const name of ['PhotoCraft','SolidCraft','SketchCraft','Document Editor','Spreadsheet','PDF Viewer','Image Editor','Audio Editor','SVG-edit']) {
     const entry=entries.find(entry=>entry.name===name);assert.ok(entry,name);assert.ok(menuDisabledTitle(entry),name);
   }
+});
+
+test('Office offers NoteCraft when its qualified package is present',()=>{
+  const off=fixture([]),on=fixture(['notecraft']);
+  assert.equal(off.desktopMenu.find(e=>e.name==='Office').children.some(e=>e.name==='NoteCraft'),false);
+  const entry=on.desktopMenu.find(e=>e.name==='Office').children.find(e=>e.name==='NoteCraft');
+  assert.ok(entry);assert.equal(on.applicationIds[entry.name],'notecraft');assert.equal(on.menuDisabledTitle(entry),null);
 });

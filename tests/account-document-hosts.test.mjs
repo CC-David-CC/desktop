@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../active-system/app.js',import.meta.url),'utf8');
 const start=source.indexOf('class Desktop {'),end=source.indexOf('\n}\n',start)+2;
-const editorDefinitions=source.match(/^const (?:layerAccountApps|accountDocumentNames)=.*;$/gm).join('\n');
+const editorDefinitions=source.match(/^const (?:drakonApps|layerAccountApps|accountDocumentNames)\s*=.*;$/gm).join('\n');
 const editors={text:'Text Editor',wordcraft:'WordCraft',pdfcraft:'PdfCraft',gridcraft:'GridCraft',deckcraft:'DeckCraft',
   photocraft:'PhotoCraft',vectorcraft:'VectorCraft',figcraft:'FigCraft',anicraft:'AniCraft',lightcraft:'LightCraft',
   designcraft:'DesignCraft',soundcraft:'SoundCraft',filmcraft:'FilmCraft',effectcraft:'EffectCraft',cadcraft:'CADCraft',texturecraft:'TextureCraft',materialcraft:'MaterialCraft',sketchcraft:'SketchCraft',solidcraft:'SolidCraft',pcbcraft:'PCBCraft',fieldcraft:'FieldCraft'};
@@ -13,7 +13,7 @@ const sha='a'.repeat(64),draft='12345678-1234-1234-1234-123456789abc';
 function fixture() {
   let owner='account-A';const storage=new Map(),surfaces=new Map();
   const context=vm.createContext({console,location:{origin:'https://webos.test'},identityConfig:null,surfaces,
-    signedInSubject:()=>owner,accountWindow:w=>!w.ownerSub||w.ownerSub===owner,isAccountApp:()=>false,
+    signedInSubject:()=>owner,workspaceOwner:()=>owner,accountWindow:w=>!w.ownerSub||w.ownerSub===owner,isAccountApp:()=>false,
     enabledApp:()=>true,windowRect:w=>({x:w.x,y:w.y,w:w.w,h:w.h}),
     localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},
     feedback:message=>{throw Error(message);}});
@@ -48,7 +48,7 @@ test('Account document windows restore exact account resource, draft and geometr
 
 test('all account document hosts update canonical titles/revisions and activate one existing view across screens',()=>{
   const f=fixture(),a=f.desktop(),b=f.desktop();
-  for(const [app,name] of Object.entries(editors)) {
+  for(const [app,name] of Object.entries({...editors,notecraft:'NoteCraft'})) {
     const w=a.launch(app,'Untitled');a.updateAccountFileBinding(w,{owner:'account-A',path:'Documents/'+app+'.data',sha256:sha});
     assert.equal(w.title,app+'.data — '+name);
     assert.equal(b.openAccountFile(app,{owner:'account-A',path:w.launchContext.path,sha256:sha}),w);
@@ -65,4 +65,15 @@ test('canonical resource validation rejects traversal and unconfirmed revisions 
     assert.throws(()=>d.openAccountFile('gridcraft',resource),/account file/);
   }
   assert.equal(d.windows.length,0);
+});
+
+test('NoteCraft restores the saved notebook for its own account',()=>{
+  const f=fixture(),d=f.desktop();
+  const w=d.launch('notecraft','NoteCraft');
+  d.updateAccountFileBinding(w,{owner:'account-A',path:'Notes/Field.notecraft',sha256:sha});
+  assert.equal(d.saveLayout(),true);
+  const restored=f.desktop();restored.layoutOwner=null;restored.restoreLayout();
+  const [note]=restored.windows;
+  assert.equal(note.app,'notecraft');assert.equal(note.launchContext.path,'Notes/Field.notecraft');
+  assert.equal(note.launchContext.sha256,sha);assert.equal(note.launchContext.restore,true);
 });
