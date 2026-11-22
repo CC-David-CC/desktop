@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source=readFileSync(new URL('../active-system/app.js',import.meta.url),'utf8');
 const start=source.indexOf('class Desktop {'),end=source.indexOf('\n}\n',start)+2;
-const editorDefinitions=source.match(/^const (?:drakonApps|layerAccountApps|accountDocumentNames)\s*=.*;$/gm).join('\n');
+const editorDefinitions=source.slice(source.indexOf('const layerAccountApps='),source.indexOf('async function renewAccountSession('));
 const editors={text:'Text Editor',wordcraft:'WordCraft',pdfcraft:'PdfCraft',gridcraft:'GridCraft',deckcraft:'DeckCraft',
   photocraft:'PhotoCraft',vectorcraft:'VectorCraft',figcraft:'FigCraft',anicraft:'AniCraft',lightcraft:'LightCraft',
   designcraft:'DesignCraft',soundcraft:'SoundCraft',filmcraft:'FilmCraft',effectcraft:'EffectCraft',cadcraft:'CADCraft',texturecraft:'TextureCraft',materialcraft:'MaterialCraft',sketchcraft:'SketchCraft',solidcraft:'SolidCraft',pcbcraft:'PCBCraft',fieldcraft:'FieldCraft'};
@@ -76,4 +76,14 @@ test('NoteCraft restores the saved notebook for its own account',()=>{
   const [note]=restored.windows;
   assert.equal(note.app,'notecraft');assert.equal(note.launchContext.path,'Notes/Field.notecraft');
   assert.equal(note.launchContext.sha256,sha);assert.equal(note.launchContext.restore,true);
+});
+
+test('learning games bind one Files window to the current owner and restore its revision',()=>{
+  const f=fixture(),d=f.desktop(),id='fraction-farm',path='Documents/Round.fraction-farm.json';
+  const w=d.openAccountFile(id,{owner:'account-A',path,sha256:sha});
+  assert.equal(w.title,'Round.fraction-farm.json — Fraction Farm');
+  assert.equal(d.openAccountFile(id,{owner:'account-A',path,sha256:sha}),w);
+  const other=f.desktop();other.layoutOwner=null;other.restoreLayout();
+  assert.equal(other.windows[0].launchContext.sha256,sha);
+  assert.equal(other.windows[0].launchContext.restore,true);
 });
