@@ -33,6 +33,7 @@ function publicAppContent(id,desktop,w){
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
       const host=publicAppHost(desktop,w,id);
       if(id==='files')host.refreshPanelPins=()=>panelPins?.refresh();
+      if(id==='linux-x11')host.prepareGuestNetwork=prepareGuestNetwork;
       if(desktopAgentOperations)host.registerAgentView=desktopAgentOperations.register;
       try{const registry=await publicCommandRegistry(),owner=w.ownerSub||signedInSubject();if(owner)host.commands=registry.scope({windowId:String(w.id),appId:id,owner,isOpen:()=>desktop.windows.includes(w)});}catch(error){console.error('App command service unavailable',error);}
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
