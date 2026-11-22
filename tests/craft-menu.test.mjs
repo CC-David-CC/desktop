@@ -8,7 +8,8 @@ const start=source.indexOf('const desktopMenu=['),policy=source.indexOf('functio
 const selected={WordCraft:'wordcraft',PdfCraft:'pdfcraft',GridCraft:'gridcraft',DeckCraft:'deckcraft',PhotoCraft:'photocraft',VectorCraft:'vectorcraft',DesignCraft:'designcraft',FigCraft:'figcraft',AniCraft:'anicraft',LightCraft:'lightcraft',FilmCraft:'filmcraft',EffectCraft:'effectcraft',SoundCraft:'soundcraft',CADCraft:'cadcraft',SolidCraft:'solidcraft',PCBCraft:'pcbcraft',FieldCraft:'fieldcraft',SketchCraft:'sketchcraft',TextureCraft:'texturecraft',MaterialCraft:'materialcraft'};
 function fixture(ids) {
   const context=vm.createContext({reference:{icons:{}},viewerProfile:{speech:false},enabledApp:id=>ids.includes(id)});
-  return vm.runInContext(source.slice(start,end)+';({desktopMenu,applicationIds,menuDisabledTitle})',context);
+  const names=source.slice(source.indexOf('const layerAccountApps='),source.indexOf('async function renewAccountSession('));
+  return vm.runInContext(names+'\n'+source.slice(start,end)+';({desktopMenu,applicationIds,menuDisabledTitle})',context);
 }
 function leaves(entries){return entries.flatMap(entry=>entry.children?leaves(entry.children):entry.separator?[]:[entry]);}
 
