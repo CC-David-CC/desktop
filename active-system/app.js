@@ -122,7 +122,7 @@ function accountApplications(){
 const isAccountApp=app=>typeof app==='string'&&app.startsWith('user-app:');
 const accountApp=app=>accountApplications().find(entry=>entry.id===app);
 const availableApplication=app=>!isAccountApp(app)||!!accountApp(app);
-const accountWindow=w=>(!w.ownerSub||w.ownerSub===signedInSubject())&&(!isAccountApp(w.app)||!!accountApp(w.app));
+const accountWindow=w=>(!w.ownerSub||w.ownerSub===workspaceOwner())&&(!isAccountApp(w.app)||!!accountApp(w.app));
 function feedback(text) {
   clearTimeout(feedbackTimer);const status=$('#feedback');status.textContent=text;
   if(text)feedbackTimer=setTimeout(()=>{status.textContent='';feedbackTimer=null;},4000);
@@ -463,7 +463,7 @@ class Desktop {
     w.launchContext=launchContext;w.ownerSub=context.owner;this.render();return w;
   }
   updateAccountFileBinding(w,resource){
-    if(!this.windows.includes(w)||!Object.hasOwn(accountDocumentNames,w.app)||resource.owner!==signedInSubject())throw Error('Current document window/account required.');
+    if(!this.windows.includes(w)||!Object.hasOwn(accountDocumentNames,w.app)||!workspaceOwner()||resource.owner!==workspaceOwner())throw Error('Current document window/account required.');
     const path=resource.path,sha256=resource.sha256;
     if(path===null){if(sha256!==null)throw Error('Untitled document cannot have a saved revision.');delete w.launchContext;}
     else{
@@ -477,7 +477,7 @@ class Desktop {
   }
   activateTextFile(resource){return this.activateAccountFile(resource,'text');}
   accountFileLocation(resource,app=null,exclude=null){
-    if(resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.length>2048||resource.path.startsWith('/')||resource.path.endsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..'||/[\0\\]/.test(p)))throw Error('Current canonical account file required.');
+    if(!workspaceOwner()||resource.owner!==workspaceOwner()||typeof resource.path!=='string'||resource.path.length>2048||resource.path.startsWith('/')||resource.path.endsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..'||/[\0\\]/.test(p)))throw Error('Current canonical account file required.');
     for(const desktop of new Set([this,...surfaces.values()])){
       const w=desktop.windows.find(w=>w!==exclude&&Object.hasOwn(accountDocumentNames,w.app)&&(!app||w.app===app)&&w.ownerSub===resource.owner&&w.launchContext?.storage==='account'&&w.launchContext.owner===resource.owner&&w.launchContext.path===resource.path);
       if(w)return {desktop,w};
@@ -494,7 +494,7 @@ class Desktop {
     return w;
   }
   openAccountFile(app,resource){
-    if(!Object.hasOwn(accountDocumentNames,app)||!enabledApp(app)||resource.owner!==signedInSubject()||typeof resource.path!=='string'||resource.path.startsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..')||!/^[0-9a-f]{64}$/.test(resource.sha256))throw Error('An exact account file is required.');
+    if(!Object.hasOwn(accountDocumentNames,app)||!enabledApp(app)||!workspaceOwner()||resource.owner!==workspaceOwner()||typeof resource.path!=='string'||resource.path.startsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..')||!/^[0-9a-f]{64}$/.test(resource.sha256))throw Error('An exact account file is required.');
     const existing=this.activateAccountFile(resource);if(existing)return existing;
     const w=this.launch(app,resource.path.split('/').pop()+' — '+accountDocumentNames[app]);
     w.launchContext=Object.freeze({version:1,storage:'account',path:resource.path,sha256:resource.sha256,owner:resource.owner});w.ownerSub=resource.owner;this.saveLayout();return w;
@@ -694,7 +694,7 @@ if(viewerProfile.speech)initializeVoiceControl();
 // Mounted views report actual unsaved/pending work synchronously. Draft
 // checkpoints run while editing; an unload handler is only a warning gate.
 window.addEventListener('beforeunload',event=>{
-  if(guestPromotion && guestFiles.ready){event.preventDefault();event.returnValue='';return;}
+  if(guestPromotion && temporaryWorkspaces.has(currentSession)){event.preventDefault();event.returnValue='';return;}
   for(const desktop of surfaces.values())for(const win of desktop.root.querySelectorAll('.window')){
     const life=win.appView?.lifecycle;if(!life)continue;
     try{const state=life.snapshot();if(!state.dirty&&!state.pending)continue;}catch{}
@@ -939,6 +939,19 @@ async function initializeSession(){
   document.documentElement.classList.remove('login-required');
   if(identityConfig.identity.mode==='server')identityTimer=setInterval(maintainIdentity,30000);
   for(const surface of surfaces.values()){surface.restoreLayout();surface.render();}
+  if (session.public.kind === 'anonymous') {
+    const desktop = surfaces.get('Desktop');
+    if (desktop && enabledApp('weather-maps')) {
+      const win = desktop.launch('weather-maps');
+      if (win) {
+        win.restore = {x:win.x, y:win.y, w:win.w, h:win.h};
+        Object.assign(win, {x:0,y:0,w:desktop.workWidth(),h:resolution[1]});
+        desktop.render();
+      }
+    }
+    if(!desktopLifecycle)void startSessionLifecycle(session,identityConfig);
+    return;
+  }
   void accountServices.restoreTextRecovery({desktops:[...surfaces.values()],accountId:session.public.sub,valid:()=>currentSession===session&&signedInSubject()===session.public.sub});
   void accountServices.restoreWordcraftRecovery({desktops:[...surfaces.values()],accountId:session.public.sub,valid:()=>currentSession===session&&signedInSubject()===session.public.sub});
   void accountServices.restorePdfcraftRecovery({desktops:[...surfaces.values()],accountId:session.public.sub,valid:()=>currentSession===session&&signedInSubject()===session.public.sub});
@@ -1004,7 +1017,7 @@ async function restoreOrStartGuestSession(){
 let guestPromotion = null;
 async function changeAccount(mode,username='',password='',stillWanted=()=>true){
   if(accountTransition||sessionEnding)throw Error('An account change is already in progress.');
-  accountTransition=true;let approved, pausedGuest;
+  accountTransition=true;let approved, pausedGuest, thawGuest;
   try{
     const prior=currentSession;approved=prior?await confirmSessionEnd():{initial:[],tracker:trackSessionEdits()};
     if(!approved||currentSession!==prior)return;
@@ -1018,13 +1031,16 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     const previous=currentSession;
     for(const surface of surfaces.values())if(!surface.saveLayout()){await logoutAccountSession(next).catch(()=>{});feedback('Could not save your window layout. Your current session is still open.');return;}
     for(const surface of surfaces.values())surface.root.inert=true;
-    if(guestPromotion?.guest===previous && guestPromotion.subject===next.public.sub && v86Instance){
+    if(guestPromotion?.guest===previous && guestPromotion.subject===next.public.sub && temporaryWorkspaces.has(previous)){
       try{
-        if(!guestFiles.ready || guestState!=='ready')throw Error('The guest home is unavailable.');
-        pausedGuest=v86Instance;
-        await pausedGuest.request('pauseGuest');
+        if (v86Instance) {
+          pausedGuest=v86Instance;
+          await pausedGuest.request('pauseGuest');
+        }
+        const guest = temporaryWorkspaces.get(previous);
+        thawGuest = guest.freeze();
         const files=new accountServices.UserFiles(sessionAccounts.get(next).createFileAuthority());
-        await promoteGuestHome(guestFiles,files,previous);
+        await promoteGuestHome(guest.files,files);
         if(!stillWanted()||currentSession!==previous||approved.tracker.changed())throw Error('The workspace changed during the transfer.');
       }catch(error){
         await logoutAccountSession(next).catch(()=>{});
@@ -1048,7 +1064,7 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
     feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
-  }finally{if(pausedGuest && pausedGuest===v86Instance)await pausedGuest.request('resumeGuest').catch(error=>feedback(error.message));approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
+  }finally{thawGuest?.();if(pausedGuest && pausedGuest===v86Instance)await pausedGuest.request('resumeGuest').catch(error=>feedback(error.message));approved?.tracker.dispose();for(const surface of surfaces.values())surface.root.inert=false;accountTransition=false;}
 }
 async function maintainIdentity(){
   if(!currentSession||renewingIdentity||accountTransition)return;
@@ -1074,7 +1090,7 @@ let bootFailed=false;
 let guestBootRequest=null;
 let guestBootTimer=null;
 function useAccountGuestHome(){
-  return viewerProfile.accountGuestHome===true&&serverFilesAvailable()&&!!signedInSubject();
+  return viewerProfile.accountGuestHome===true&&(currentSession?.public.kind==='anonymous'||serverFilesAvailable()&&!!signedInSubject());
 }
 function guestNetworkForSession(){
   const owner=signedInSubject(),network=identityConfig?.guestNetwork;
@@ -1152,7 +1168,7 @@ async function startGuest(){
     if(epoch!==bootEpoch)return;
     if(useAccountGuestHome()){
       const [context,{createAccountHome},{createAccountHome9p}]=await Promise.all([
-        serverFileContext(),import('./storage/browser/account-home.mjs'),import('./assets/desktop/account-home-9p.mjs')
+        workspaceFileContext(),import('./storage/browser/account-home.mjs'),import('./assets/desktop/account-home-9p.mjs')
       ]);
       if(epoch!==bootEpoch||!context.valid())return;
       const home=createAccountHome({
@@ -1202,7 +1218,7 @@ function disposeSessionView(win,reason){
   const errors=disposePublicAppView(win,reason);win.remove();if(errors.length)throw new AggregateError(errors,'An app did not finish cleanup.');
 }
 let sessionEnding=false;
-function sessionDirtyWindows(owner=signedInSubject()){
+function sessionDirtyWindows(owner=workspaceOwner()){
   const result=[];
   for(const desktop of surfaces.values())for(const w of desktop.windows){
     if(w.ownerSub&&w.ownerSub!==owner)continue;
@@ -1219,7 +1235,7 @@ function trackSessionEdits(){
   let changed=false,invalid=false;const cleanup=[],observers=[],leases=[],tracked=[],textTracked=new WeakSet(),documentTracked=new WeakSet(),imageTracked=new WeakSet(),audioTracked=new WeakSet(),spreadsheetTracked=new WeakSet(),dataExplorerTracked=new WeakSet(),notebookTracked=new WeakSet(),mark=()=>{changed=true;};
   // Successful sign-out invalidates Accounts before view teardown. Keep the
   // captured owner's membership stable while checking for actual edits.
-  const owner=signedInSubject();
+  const owner=workspaceOwner();
   const membership=()=>[...surfaces.values()].flatMap(desktop=>desktop.windows.filter(w=>!w.ownerSub||w.ownerSub===owner).map(w=>({desktop,w})));
   const initialMembers=membership();
   const read=sessionLifecycleSnapshot;

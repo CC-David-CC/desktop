@@ -22,7 +22,7 @@ function promptDesktop(label,{title='Enter a name',value='',confirmLabel='OK',ca
  const titleId='codi-prompt-'+crypto.randomUUID();heading.id=titleId;dialog.setAttribute('aria-labelledby',titleId);field.textContent=label;input.type='text';input.value=String(value);input.autocomplete='off';field.append(input);form.append(field,actions);dialog.append(heading,form);
  return new Promise(resolve=>{let done=false;const finish=result=>{if(done)return;done=true;signal?.removeEventListener('abort',abort);if(dialog.open)dialog.close();dialog.remove();resolve(result);};const abort=()=>finish(null);const cancel=textButton(cancelLabel,()=>finish(null)),submit=textButton(confirmLabel,()=>finish(input.value));submit.type='submit';actions.append(cancel,submit);form.addEventListener('submit',event=>{event.preventDefault();finish(input.value);});dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});document.body.append(dialog);signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted){finish(null);return;}try{dialog.showModal();input.focus();input.select();}catch{finish(null);}});
 }
-function publicAppHost(desktop,w,id){return {version:2,desktop,w,...(id==='microduck'?{microduckRunnerOrigin:identityConfig?.microduck?.runnerOrigin??null}:{}),ui:{make,textButton,appInput,feedback,confirm:confirmDesktop,prompt:promptDesktop,applyInputMode:applyScreenKeyboardPolicy,enableKeyboard:()=>setScreenKeyboardEnabled(true)},session:()=>currentSession,...(id==='browser'?{browserRelay:{available:()=>!!identityConfig?.browserRelay,open:async options=>{const session=currentSession;const module=await import('./assets/desktop/browser-relay-client.mjs');return module.openBrowserRelay(identityConfig,session,{...options,valid:()=>currentSession===session});}}}:{}),guestState:()=>guestState,guestMessage:()=>guestMessage,storage:{accountFileContext:serverFileContext,mirrorFileContext,...(id==='jsketcher'?{readCadSource:async(owner,name,{signal}={})=>{if(typeof name!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(name)||signal?.aborted)throw Error('Invalid source request.');const c=await serverFileContext();if(c.owner!==owner||!c.valid()||signal?.aborted)throw Error('Account changed.');const result=await c.files.request('cad-source',{resource:'cad-sources',path:name},null,'blob',{signal});if(c.owner!==owner||!c.valid()||signal?.aborted)throw Error('Account changed.');return result.data;}}:{}),...(id==='files'?{guestFileContext,wordCountOnServer:async(owner,path,sha256)=>{const c=await serverFileContext();if(c.owner!==owner||!c.valid())throw Error('Account changed.');return c.files.wordCount(path,sha256);}}:{}),pickFile:pickMirrorFile,pickFolder:pickMirrorFolder,pickAccountFile,openMirrorEditor,openMirrorDocument,signedInSubject},tools:{loadNarrator:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));const {narrate,renderAudio,voices,sampleRate}=await loader.loadApp('narrator');return {narrate,renderAudio,voices,sampleRate};},loadGLTFTransform:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('gltf-transform');},loadOpenCascade:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('opencascade');},loadYjs:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('yjs')).library;},loadWebTorrent:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('webtorrent')).library;},loadOnnxRuntime:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('onnx-runtime')).library;},loadTanStackVirtual:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('tanstack-virtual')).library;},loadTrystero:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('trystero')).library;},loadCodeMirror:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('codemirror');},loadMermaid:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('mermaid')).library;},loadECharts:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('echarts')).library;},loadPlotly:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('plotly')).library;},loadPdfme:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('pdfme')).library;},loadTransformers:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('transformers')).library;},loadMapLibre:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('maplibre')).library;},loadZip:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return loader.loadApp('zip');},createFFmpeg:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('ffmpeg')).createFFmpeg();},createWaveSurfer:async options=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('wavesurfer')).createWaveSurfer(options);},loadTone:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('tone')).Tone;}},terminal:{accountHome:useAccountGuestHome,terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
+function publicAppHost(desktop,w,id){return {version:2,desktop,w,...(id==='microduck'?{microduckRunnerOrigin:identityConfig?.microduck?.runnerOrigin??null}:{}),ui:{make,textButton,appInput,feedback,confirm:confirmDesktop,prompt:promptDesktop,applyInputMode:applyScreenKeyboardPolicy,enableKeyboard:()=>setScreenKeyboardEnabled(true)},session:()=>currentSession,...(id==='browser'?{browserRelay:{available:()=>!!identityConfig?.browserRelay,open:async options=>{const session=currentSession;const module=await import('./assets/desktop/browser-relay-client.mjs');return module.openBrowserRelay(identityConfig,session,{...options,valid:()=>currentSession===session});}}}:{}),guestState:()=>guestState,guestMessage:()=>guestMessage,storage:{workspaceFileContext,workspaceOwner,accountFileContext:serverFileContext,mirrorFileContext,...(id==='jsketcher'?{readCadSource:async(owner,name,{signal}={})=>{if(typeof name!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(name)||signal?.aborted)throw Error('Invalid source request.');const c=await serverFileContext();if(c.owner!==owner||!c.valid()||signal?.aborted)throw Error('Account changed.');const result=await c.files.request('cad-source',{resource:'cad-sources',path:name},null,'blob',{signal});if(c.owner!==owner||!c.valid()||signal?.aborted)throw Error('Account changed.');return result.data;}}:{}),...(id==='files'?{guestFileContext,wordCountOnServer:async(owner,path,sha256)=>{const c=await serverFileContext();if(c.owner!==owner||!c.valid())throw Error('Account changed.');return c.files.wordCount(path,sha256);}}:{}),pickFile:pickMirrorFile,pickFolder:pickMirrorFolder,pickAccountFile,openMirrorEditor,openMirrorDocument,signedInSubject},tools:{loadNarrator:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));const {narrate,renderAudio,voices,sampleRate}=await loader.loadApp('narrator');return {narrate,renderAudio,voices,sampleRate};},loadGLTFTransform:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('gltf-transform');},loadOpenCascade:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('opencascade');},loadYjs:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('yjs')).library;},loadWebTorrent:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('webtorrent')).library;},loadOnnxRuntime:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('onnx-runtime')).library;},loadTanStackVirtual:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('tanstack-virtual')).library;},loadTrystero:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('trystero')).library;},loadCodeMirror:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('codemirror');},loadMermaid:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('mermaid')).library;},loadECharts:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('echarts')).library;},loadPlotly:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('plotly')).library;},loadPdfme:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('pdfme')).library;},loadTransformers:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('transformers')).library;},loadMapLibre:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('maplibre')).library;},loadZip:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return loader.loadApp('zip');},createFFmpeg:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('ffmpeg')).createFFmpeg();},createWaveSurfer:async options=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('wavesurfer')).createWaveSurfer(options);},loadTone:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('tone')).Tone;}},terminal:{accountHome:useAccountGuestHome,terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
 function publicAppContent(id,desktop,w){
   const placeholder=make('div','window-content app-loading','Loading '+w.title+'…');placeholder.dataset.appLoading=id;
   const load=async()=>{
@@ -40,6 +40,10 @@ function publicAppContent(id,desktop,w){
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w)){instance.dispose('View removed during mount');return;}
       if(!(body instanceof HTMLElement)||!body.classList.contains('window-content'))throw Error('Invalid app view');
       placeholder.replaceWith(body);applyScreenKeyboardPolicy(body);
+      if (instance.ready) Promise.resolve(instance.ready).catch(error=>{
+        if (!instance.signal?.aborted && body.isConnected && !body.childElementCount &&
+            body.textContent.startsWith('Opening ')) body.textContent='Could not open this app. '+error.message;
+      });
       const win=body.closest('.window');if(win){win.editorState=w.editor;win.appView=instance;}
       if(id==='terminal')void startGuest();
       if(w.focusWhenReady){w.focusWhenReady=false;if(desktop.active===w.id&&desktop.current===w.workspace)instance.focus?.();}
@@ -81,34 +85,43 @@ const guestFiles = {
 };
 // The guest CPU is paused while reading this tree. The registered subject owns
 // the destination. On retry, an identical server revision is already confirmed.
-async function promoteGuestHome(guest, files, session) {
-  const internalSession = JSON.stringify({sessionId:session.id,kind:session.kind,displayName:session.displayName});
+async function promoteGuestHome(guest, files) {
   const directories = [''];
   while (directories.length) {
     const parent = directories.pop();
-    const entries = await guest.list(parent);
-    const existing = new Map((await files.list(parent)).entries.map(entry => [entry.name, entry]));
-    for (const entry of entries) {
-      const name = entry.name;
-      if (!name || name === '.' || name === '..' || /[\/\x00]/.test(name)) throw Error('Invalid guest filename.');
-      const path = parent ? parent + '/' + name : name;
-      const dest = existing.get(name);
-      if (entry.dir) {
+    const existing = new Map((await files.list(parent)).entries.map(entry => [entry.name,entry]));
+    for (const entry of (await guest.list(parent)).entries) {
+      const path = parent ? parent + '/' + entry.name : entry.name;
+      const dest = existing.get(entry.name);
+      if (entry.directory) {
         if (dest && !dest.directory) throw Error('A file already exists at ' + path);
         if (!dest) await files.mkdir(path);
         directories.push(path);
-        continue;
+      } else {
+        if (dest?.directory) throw Error('A folder already exists at ' + path);
+        const {data,sha256} = await guest.read(path);
+        if (!dest) await files.write(path, data, null);
+        if ((await files.version(path)).sha256 !== sha256) throw Error('Account contents differ at ' + path);
       }
-      if ((entry.mode & 0o170000) !== 0o100000) throw Error('Only regular files and folders can be transferred. Check ' + path);
-      const data = await guest.read(path);
-      if (path === 'session.json' && data.length < 1024 && new TextDecoder().decode(data) === internalSession) continue;
-      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', data));
-      const sha256 = Array.from(digest, byte => byte.toString(16).padStart(2,'0')).join('');
-      if (dest?.directory) throw Error('A folder already exists at ' + path);
-      if (!dest) await files.write(path, data, null);
-      if ((await files.version(path)).sha256 !== sha256) throw Error('Account contents differ at ' + path);
     }
   }
+}
+const temporaryWorkspaces = new WeakMap();
+function workspaceOwner() {
+  return currentSession?.public.kind === 'anonymous' ? currentSession.public.sub : signedInSubject();
+}
+async function workspaceFileContext() {
+  const session = currentSession;
+  if (session?.public.kind !== 'anonymous') return serverFileContext();
+  const valid = () => currentSession === session;
+  const {createTemporaryFiles} = await import('./storage/browser/temporary-files.mjs');
+  if (!valid()) throw new DOMException('Guest session ended.', 'AbortError');
+  let workspace = temporaryWorkspaces.get(session);
+  if (!workspace) {
+    workspace = createTemporaryFiles(valid);
+    temporaryWorkspaces.set(session,workspace);
+  }
+  return {owner:session.public.sub, files:workspace.files, valid};
 }
 
 function appInput(label,value=''){const n=make('input');n.value=value;n.setAttribute('aria-label',label);return n;}
