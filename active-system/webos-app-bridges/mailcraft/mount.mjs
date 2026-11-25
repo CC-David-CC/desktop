@@ -13,6 +13,7 @@ export function mount(host) {
   const check = () => {
     if (!current()) throw new DOMException('The WebOS account changed.', 'AbortError');
   };
+  const signedOut = 'Your WebOS session ended. Sign out and sign in again to reconnect MailCraft.';
   const mailSession = new URL('/api/mailcraft/jmap/session', location.origin).href;
 
   async function issue() {
@@ -30,10 +31,20 @@ export function mount(host) {
     return result;
   }
 
+  const mailbox = document.createElement('div');
+  mailbox.style.cssText = 'display:flex;flex-direction:column;height:100%;color:var(--desktop-text)';
+  const status = document.createElement('div');
+  status.setAttribute('role', 'status');
+  status.style.cssText = 'background:var(--desktop-raised);overflow-wrap:anywhere';
+  function showStatus(message) {
+    status.style.padding = message ? '8px 12px' : '';
+    status.textContent = message;
+  }
+
   const frame = document.createElement('iframe');
   frame.title = 'MailCraft mailbox';
   frame.referrerPolicy = 'no-referrer';
-  frame.style.cssText = 'display:block;width:100%;height:100%;border:0';
+  frame.style.cssText = 'display:block;width:100%;flex:1;min-height:0;border:0';
   const ready = (async () => {
     try {
       let initial = await issue();
@@ -48,8 +59,19 @@ export function mount(host) {
             initial = null;
             return ticket;
           }
-          const refreshed = await issue();
-          if (refreshed.address !== address) throw Error('The approved mailbox changed.');
+          let refreshed;
+          try {
+            refreshed = await issue();
+          } catch (error) {
+            if (current() && error.status === 401) showStatus(signedOut);
+            if (current() && error.status === 403) showStatus('This WebOS account no longer has MailCraft access.');
+            throw error;
+          }
+          if (refreshed.address !== address) {
+            showStatus('The approved mailbox changed. Close and reopen MailCraft.');
+            throw Error('The approved mailbox changed.');
+          }
+          showStatus('');
           return refreshed.ticket;
         };
         event.source.postMessage({mailcraftAccount: address, mailcraftSession: mailSession}, location.origin);
@@ -57,12 +79,16 @@ export function mount(host) {
       };
       window.addEventListener('message', receive, {signal: host.signal});
       frame.src = new URL('./native/index.html?empty&webgl', import.meta.url).href;
-      element.replaceChildren(frame);
+      mailbox.append(status, frame);
+      element.replaceChildren(mailbox);
     } catch (error) {
       if (current()) {
-        element.textContent = error.status === 403
-          ? 'This WebOS account has no approved MailCraft mailbox.'
-          : 'MailCraft could not open this mailbox. Try opening MailCraft again.';
+        let message = 'MailCraft could not open this mailbox. Try opening MailCraft again.';
+        if (error.status === 401) message = signedOut;
+        if (error.status === 403) message = 'This WebOS account has no approved MailCraft mailbox.';
+        showStatus(message);
+        mailbox.append(status);
+        element.replaceChildren(mailbox);
       }
     }
   })();
