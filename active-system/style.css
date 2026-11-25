@@ -290,3 +290,8 @@ body { background: var(--desktop-surface); }
 .window-content[class*=" webos-"] > div > [role="status"] {
   color: var(--desktop-text);
 }
+.window-content[class*=" webos-"] > div:has(> [role="status"]) > button {
+  color: var(--desktop-text);
+  background: var(--desktop-raised);
+  border-color: var(--desktop-border);
+}
