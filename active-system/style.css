@@ -272,6 +272,12 @@ body { background: var(--desktop-surface); }
   border-color: var(--desktop-border);
 }
 
+/* Keep the shared line-art icons legible in dark window captions. */
+.window-caption > svg.icon {
+  background: light-dark(transparent, #e4e9ec);
+  border-radius: 3px;
+}
+
 /* WebOS file controls use the desktop palette around each editor. */
 .window-content:is(.webos-wordcraft, .webos-gridcraft, .webos-deckcraft, .webos-pdfcraft, .notecraft-webos, .textcraft-workspace) {
   color: var(--desktop-text);
