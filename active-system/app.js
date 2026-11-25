@@ -294,7 +294,13 @@ class Desktop {
     this.viewport=make('div','viewport');this.viewport.append(this.spacer);parent.append(this.viewport);
     this.root.addEventListener('click',e=>{if(e.target===this.root){this.closePopups();this.active=null;this.render();}});
     this.root.addEventListener('pointerdown',e=>{if(!e.target.closest('.popup,.popup-backdrop')&&!e.target.closest('.panel'))this.closePopups();});
-    this.root.addEventListener('keydown',e=>{if(e.key==='Escape'){this.closePopups();this.render();}});
+    this.root.addEventListener('keydown',e=>{
+      if(e.key!=='Escape')return;
+      const restoreLauncher=this.menu&&e.target.closest('.menu-pane');
+      this.closePopups();
+      this.render();
+      if(restoreLauncher)$('.app-menu-button',this.root)?.focus();
+    });
     this.observer=new ResizeObserver(()=>this.scale());this.observer.observe(this.viewport);
     this.render();
   }
@@ -437,12 +443,23 @@ class Desktop {
     const account=button('Session: '+sessionName(),()=>{this.closePopups();this.showStatus('account',account);},'account');
     const symbol=make('span','account-symbol','●');symbol.setAttribute('aria-hidden','true');account.append(symbol,make('span','account-label',sessionName()));account.title=sessionName();p.append(account);this.root.append(p);
   }
-  showMenu(items,depth,x,y) {
+  showMenu(items,depth,x,y,parentLabel) {
     this.menuLevels??=[];this.menuLevels[depth]=items;this.menuLevels.length=depth+1;
     this.root.querySelectorAll('.menu-pane').forEach(p=>{if(this.mobile||Number(p.dataset.depth)>=depth)p.remove();});
     const pane=make('div','menu-pane popup');pane.dataset.depth=depth;pane.setAttribute('role','menu');
     pane.style.left='0px';pane.style.top=y+'px';pane.style.maxHeight=(resolution[1]-y-10)+'px';
-    if(this.mobile&&depth>0){const back=textButton('‹ Back',()=>this.showMenu(this.menuLevels[depth-1],depth-1,8,0),'menu-row');pane.append(back);}
+    this.menuParentLabels??=[];
+    this.menuParentLabels[depth]=parentLabel;
+    if(this.mobile&&depth>0){
+      const back=textButton('‹ Back',event=>{
+        const parent=this.showMenu(this.menuLevels[depth-1],depth-1,8,0,this.menuParentLabels[depth-1]);
+        if(event.detail===0){
+          const rows=[...parent.querySelectorAll('button:not(:disabled)')];
+          (rows.find(row=>row.getAttribute('aria-label')===parentLabel)||rows[0])?.focus();
+        }
+      },'menu-row');
+      pane.append(back);
+    }
     for(const entry of items) {
       if(entry.separator){pane.append(make('div','menu-separator'));continue;}
       const displayName=applicationMenuNames.get(entry)||entry.name;
@@ -454,7 +471,7 @@ class Desktop {
         if(entry.children){
           const r=row.getBoundingClientRect(),base=this.root.getBoundingClientRect();
           const nx=(r.left-base.left)/this.scaleFactor,ny=(r.top-base.top)/this.scaleFactor;
-          this.showMenu(entry.children,depth+1,nx,ny);
+          this.showMenu(entry.children,depth+1,nx,ny,displayName);
         } else this.root.querySelectorAll('.menu-pane').forEach(n=>{if(Number(n.dataset.depth)>depth)n.remove();});
       };
       if(entry.children){row.setAttribute('aria-haspopup','menu');row.addEventListener('pointerenter',e=>{if(!this.mobile&&e.pointerType!=='touch')open();});}
@@ -474,6 +491,7 @@ class Desktop {
       if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();rows[(index+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length]?.focus();}
     });
     this.root.append(pane);this.popupBackdrop();this.positionPopup(pane,x,y);
+    return pane;
   }
   launchEntry(entry) {
     if(typeof entry.action==='function'){entry.action();return;}
