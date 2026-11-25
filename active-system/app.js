@@ -457,7 +457,18 @@ class Desktop {
     resolution=[width,height];this.scaleFactor=1;
     this.root.style.width=width+'px';this.root.style.height=height+'px';this.root.style.transform='none';
     this.spacer.style.width=width+'px';this.spacer.style.height=height+'px';
-    for(const w of this.windows){this.fitWindow(w);const el=this.root.querySelector('[data-window="'+w.id+'"]');if(el)Object.assign(el.style,{left:w.x+'px',top:w.y+'px',width:w.w+'px',height:(w.rolled?this.config.titleHeight:w.h)+'px'});}
+    for(const w of this.windows){
+      this.fitWindow(w);
+      const el=this.root.querySelector('[data-window="'+w.id+'"]');
+      if(!el)continue;
+      Object.assign(el.style,{left:w.x+'px',top:w.y+'px',width:w.w+'px',height:(w.rolled?this.config.titleHeight:w.h)+'px'});
+      const maximize=el.querySelector('.window-maximize');
+      const maximizeLabel=w.restore?'Restore':'Maximize';
+      if(maximize.title!==maximizeLabel){
+        maximize.setAttribute('aria-label',maximizeLabel);
+        maximize.title=maximizeLabel;
+      }
+    }
     this.root.querySelectorAll('.mini-window').forEach(el=>{const w=this.windows.find(w=>w.id===Number(el.dataset.windowId));if(w)Object.assign(el.style,{left:100*w.x/this.workWidth()+'%',top:100*w.y/height+'%',width:100*w.w/this.workWidth()+'%',height:100*w.h/height+'%'});});
     this.root.querySelectorAll('.popup').forEach(p=>this.positionPopup(p,parseFloat(p.style.left)||0,parseFloat(p.style.top)||0));
   }
@@ -520,12 +531,6 @@ class Desktop {
       win.querySelector('.caption-text').textContent=displayedWindowTitle(w);win.setAttribute('aria-label',displayedWindowTitle(w));
       const roll=win.querySelector('.window-controls button');roll.setAttribute('aria-label',w.rolled?'Unroll':'Roll up');roll.title=w.rolled?'Unroll':'Roll up';
       roll.querySelector('path').setAttribute('d',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16');
-      const maximize=win.querySelector('.window-maximize');
-      const maximizeLabel=w.restore?'Restore':'Maximize';
-      if(maximize.title!==maximizeLabel){
-        maximize.setAttribute('aria-label',maximizeLabel);
-        maximize.title=maximizeLabel;
-      }
     }
     this.scale();
     if(this.menu&&!keepMenu)this.showMenu(this.applicationItems(),0,0,0);
