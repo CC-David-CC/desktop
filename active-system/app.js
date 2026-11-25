@@ -497,7 +497,11 @@ class Desktop {
     w.w=Math.min(w.w,Math.max(1,width));w.h=Math.min(w.h,Math.max(this.config.titleHeight,height-top));
     w.x=Math.max(0,Math.min(w.x,width-w.w));w.y=Math.max(top,Math.min(w.y,height-w.h));
   }
-  closePopups(){this.menu=null;this.menuPath=[];this.root.querySelectorAll('.popup,.popup-backdrop').forEach(n=>n.remove());}
+  closePopups(){
+    this.menu=null;this.menuPath=[];
+    this.root.querySelectorAll('.popup,.popup-backdrop').forEach(n=>n.remove());
+    $('.app-menu-button',this.root)?.setAttribute('aria-expanded','false');
+  }
   popupBackdrop(){if(this.mobile&&!this.root.querySelector('.popup-backdrop'))this.root.append(button('Close menu',()=>this.closePopups(),'popup-backdrop'));}
   render() {
     const wasMobile=this.mobile;this.updateLayout();const c=this.config;
@@ -538,7 +542,12 @@ class Desktop {
   }
   applicationItems(){
     const apps=accountApplications();
-    const menu=(enabledApp('account-management')||enabledApp('webos-chat')||enabledApp('remote-desktop'))&&!signedInSubject()?desktopMenu.map(entry=>entry.name==='System Tools'?{...entry,children:entry.children.filter(child=>!['Account Management','WebOS Chat','Remote Desktop'].includes(child.name))}:entry):desktopMenu;
+    const accountOnly=['MailCraft','Account Management','WebOS Chat','Remote Desktop'];
+    const menu=signedInSubject()?desktopMenu:desktopMenu.map(entry=>
+      entry.children?.some(child=>accountOnly.includes(child.name))
+        ? {...entry,children:entry.children.filter(child=>!accountOnly.includes(child.name))}
+        : entry);
+
     return apps.length?[{name:'YOUR APP HERE',icon:'prototype-canvas',children:apps.map(entry=>({name:entry.name,icon:entry.icon,action:()=>this.launch(entry.id)}))},...menu]:menu;
   }
   switchWorkspace(index){
@@ -551,14 +560,16 @@ class Desktop {
   }
   renderPanel() {
     const c=this.config,p=make('div','panel');
-    const apps=button('Applications',event=>{
+    const apps=button('Applications',()=>{
       const open=this.menu;
       this.closePopups();
       if(open)return;
       this.menu=true;
-      this.showMenu(this.applicationItems(),0,0,0);
-      if(event.detail===0)$('button:not(:disabled)',$('.menu-pane',this.root))?.focus();
+      const menu=this.showMenu(this.applicationItems(),0,0,0);
+      $('button:not(:disabled)',menu)?.focus();
     },'app-menu-button');
+    apps.setAttribute('aria-haspopup','menu');
+    apps.setAttribute('aria-expanded',String(!!this.menu));
     apps.textContent='APPs';p.append(apps);
     const tasks=make('div','tasks');
     const appIds=[...new Set([...this.pins,...this.windows.filter(w=>w.workspace===this.current&&accountWindow(w)).map(w=>w.app)])];
@@ -587,58 +598,103 @@ class Desktop {
     const account=button('Session: '+sessionName(),()=>{this.closePopups();this.showStatus('account',account);},'account');
     const symbol=make('span','account-symbol','●');symbol.setAttribute('aria-hidden','true');account.append(symbol,make('span','account-label',sessionName()));account.title=sessionName();p.append(account);this.root.append(p);
   }
+  closeSubmenus(depth){
+    this.root.querySelectorAll('.menu-pane').forEach(pane=>{
+      if(Number(pane.dataset.depth)>depth)pane.remove();
+    });
+  }
+  returnToMenuParent(depth,restoreFocus){
+    const parentDepth=depth-1;
+    this.closeSubmenus(parentDepth);
+    const label=this.menuParentLabels[depth];
+    const parent=this.mobile
+      ? this.showMenu(this.menuLevels[parentDepth],parentDepth,8,0,this.menuParentLabels[parentDepth])
+      : $('.menu-pane[data-depth="'+parentDepth+'"]',this.root);
+    if(!parent)return;
+    const rows=[...parent.querySelectorAll('button:not(:disabled)')];
+    const trigger=rows.find(row=>row.getAttribute('aria-label')===label);
+    trigger?.classList.remove('selected');
+    trigger?.setAttribute('aria-expanded','false');
+    if(restoreFocus)(trigger||rows[0])?.focus();
+  }
   showMenu(items,depth,x,y,parentLabel) {
     this.menuLevels??=[];this.menuLevels[depth]=items;this.menuLevels.length=depth+1;
     this.root.querySelectorAll('.menu-pane').forEach(p=>{if(this.mobile||Number(p.dataset.depth)>=depth)p.remove();});
     const pane=make('div','menu-pane popup');pane.dataset.depth=depth;pane.setAttribute('role','menu');
+    pane.setAttribute('aria-label',parentLabel||'Applications');
     pane.style.left='0px';pane.style.top=y+'px';pane.style.maxHeight=(resolution[1]-y-10)+'px';
     this.menuParentLabels??=[];
     this.menuParentLabels[depth]=parentLabel;
     if(this.mobile&&depth>0){
       pane.classList.add('has-menu-back');
-      const back=textButton('‹ Back',event=>{
-        const parent=this.showMenu(this.menuLevels[depth-1],depth-1,8,0,this.menuParentLabels[depth-1]);
-        if(event.detail===0){
-          const rows=[...parent.querySelectorAll('button:not(:disabled)')];
-          (rows.find(row=>row.getAttribute('aria-label')===parentLabel)||rows[0])?.focus();
-        }
-      },'menu-row menu-back');
+      const back=textButton('‹ Back',event=>this.returnToMenuParent(depth,event.detail===0),'menu-row menu-back');
+      back.setAttribute('role','menuitem');
+      back.tabIndex=-1;
       pane.append(back);
     }
     for(const entry of items) {
-      if(entry.separator){pane.append(make('div','menu-separator'));continue;}
+      if(entry.separator){
+        const separator=make('div','menu-separator');separator.setAttribute('role','separator');pane.append(separator);continue;
+      }
       const displayName=applicationMenuNames.get(entry)||entry.name;
-      const row=button(displayName,null,'menu-row');row.setAttribute('role','menuitem');const disabledTitle=menuDisabledTitle(entry);if(disabledTitle){row.disabled=true;row.title=disabledTitle;}
+      const row=button(displayName,null,'menu-row');row.setAttribute('role','menuitem');row.tabIndex=-1;
+      const disabledTitle=menuDisabledTitle(entry);if(disabledTitle){row.disabled=true;row.title=disabledTitle;}
       const arrow=make('span','arrow',entry.children?'‹':'');arrow.setAttribute('aria-hidden','true');
       const app=applicationIds[entry.name], key=categoryIcons[entry.name] || entry.icon;
       const glyph=app ? appIcon(app) : icon(key,!!reference.icons[key]||String(key||'').includes('/'));
       row.append(arrow,glyph,make('span','row-text',displayName));
       const open=()=>{
-        pane.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));row.classList.add('selected');
-        if(entry.children){
-          const r=row.getBoundingClientRect(),base=this.root.getBoundingClientRect();
-          const nx=(r.left-base.left)/this.scaleFactor,ny=(r.top-base.top)/this.scaleFactor;
-          this.showMenu(entry.children,depth+1,nx,ny,displayName);
-        } else this.root.querySelectorAll('.menu-pane').forEach(n=>{if(Number(n.dataset.depth)>depth)n.remove();});
+        pane.querySelectorAll('.selected').forEach(item=>{
+          item.classList.remove('selected');item.setAttribute('aria-expanded','false');
+        });
+        row.classList.add('selected');
+        row.setAttribute('aria-expanded','true');
+        const rect=row.getBoundingClientRect(),base=this.root.getBoundingClientRect();
+        const nx=(rect.left-base.left)/this.scaleFactor,ny=(rect.top-base.top)/this.scaleFactor;
+        return this.showMenu(entry.children,depth+1,nx,ny,displayName);
       };
-      if(entry.children){row.setAttribute('aria-haspopup','menu');row.addEventListener('pointerenter',e=>{if(!this.mobile&&e.pointerType!=='touch')open();});}
-      row.addEventListener('click',event=>{
+      if(entry.children){
+        row.setAttribute('aria-haspopup','menu');
+        row.setAttribute('aria-expanded','false');
+        row.addEventListener('pointerenter',event=>{if(!this.mobile&&event.pointerType!=='touch')open();});
+      }
+      row.addEventListener('click',()=>{
         if(entry.children){
-          open();
-          if(event.detail===0)$('button:not(:disabled)',$('.menu-pane[data-depth="'+(depth+1)+'"]',this.root))?.focus();
+          $('button:not(:disabled)',open())?.focus();
           return;
         }
         this.closePopups();this.launchEntry(entry);
       });
-      row.addEventListener('keydown',e=>{if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&entry.children){e.preventDefault();open();$('.menu-pane[data-depth="'+(depth+1)+'"] button:not(:disabled)',this.root)?.focus();}});
+      row.addEventListener('keydown',event=>{
+        if(!entry.children||(event.key!=='ArrowRight'&&(event.key!=='ArrowLeft'||depth)))return;
+        event.preventDefault();
+        $('button:not(:disabled)',open())?.focus();
+      });
       pane.append(row);
     }
+    pane.addEventListener('focusin',event=>{
+      const selected=$('.selected',pane);
+      if(!selected||event.target===selected)return;
+      selected.classList.remove('selected');selected.setAttribute('aria-expanded','false');
+      this.closeSubmenus(depth);
+    });
     pane.addEventListener('keydown',e=>{
+      if(e.key==='Escape'||(depth&&e.key==='ArrowLeft')){
+        e.preventDefault();e.stopPropagation();
+        if(depth)this.returnToMenuParent(depth,true);
+        else {this.closePopups();$('.app-menu-button',this.root)?.focus();}
+        return;
+      }
+      if(e.key==='Tab'){
+        this.closePopups();$('.app-menu-button',this.root)?.focus();
+        return;
+      }
       const rows=[...pane.querySelectorAll('button:not(:disabled)')],index=rows.indexOf(document.activeElement);
       if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();rows[(index+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length]?.focus();}
       if(e.key==='Home'||e.key==='End'){e.preventDefault();rows.at(e.key==='Home'?0:-1)?.focus();}
     });
     this.root.append(pane);this.popupBackdrop();this.positionPopup(pane,x,y);
+    $('.app-menu-button',this.root)?.setAttribute('aria-expanded','true');
     return pane;
   }
   launchEntry(entry) {
