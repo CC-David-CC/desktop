@@ -209,3 +209,78 @@ body:has(.desktop .popup):not(:has(.desktop .popup :is(input,textarea,[contented
 .compact-desktop .panel .clock{font-size:10px}
 
 .status-popup[data-status-type="clock"] .clock-time{font-size:1.25em;font-weight:600;font-variant-numeric:tabular-nums;margin-top:.4em}
+
+/* The desktop supplies the system appearance to embedded apps. */
+:root {
+  color-scheme: dark;
+  --desktop-surface: #252a30;
+  --desktop-raised: #353d46;
+  --desktop-border: #56616c;
+  --desktop-text: #f3f6f8;
+  --desktop-muted: #b9c3cc;
+}
+
+body { background: var(--desktop-surface); }
+.window {
+  background: var(--desktop-surface);
+  border-color: var(--desktop-border);
+  box-shadow: 0 0 0 1px #0008;
+}
+.window-caption {
+  color: var(--desktop-text);
+  background: var(--desktop-raised);
+}
+.window:not(.focused) .window-caption {
+  color: var(--desktop-muted);
+  background: var(--desktop-surface);
+}
+.window-controls button:hover { background: #4b5965; }
+.window-controls button:last-child:hover { background: #983f39; }
+.window-content { background: var(--desktop-surface); }
+.menu-pane, .status-popup, .task-popup,
+.codi-file-picker, .codi-confirm-dialog {
+  color: var(--desktop-text);
+  background: var(--desktop-surface);
+  border-color: var(--desktop-border);
+}
+.menu-row, .codi-picker-list button {
+  color: var(--desktop-text);
+  background: var(--desktop-surface);
+}
+.menu-row:disabled, .menu-row:disabled:hover {
+  color: var(--desktop-muted);
+  background: var(--desktop-surface);
+}
+.menu-row .icon {
+  background: #e4e9ec;
+  border-radius: 3px;
+}
+.menu-separator { background: var(--desktop-border); }
+.status-popup button, .task-popup button, .task-preview,
+.codi-confirm-actions button, .codi-confirm-dialog input {
+  color: var(--desktop-text);
+  background: var(--desktop-raised);
+  border-color: var(--desktop-border);
+}
+.codi-picker-list { border-color: var(--desktop-border); }
+.codi-picker-list button:hover, .codi-picker-list button:focus { background: var(--desktop-raised); }
+.login-form input {
+  color: var(--desktop-text);
+  background: var(--desktop-surface);
+  border-color: var(--desktop-border);
+}
+
+/* WebOS file controls use the desktop palette around each editor. */
+.window-content:is(.webos-wordcraft, .webos-gridcraft, .webos-deckcraft, .webos-pdfcraft, .notecraft-webos, .textcraft-workspace) {
+  color: var(--desktop-text);
+  background: var(--desktop-surface);
+}
+.window-content :is(.webos-wordcraft-statusbar, .webos-gridcraft-statusbar, .webos-deckcraft-statusbar, .webos-pdfcraft-statusbar, .notecraft-filebar) {
+  color: var(--desktop-text);
+  background: var(--desktop-raised);
+  border-color: var(--desktop-border);
+}
+.window-content .notecraft-filebar button {
+  background: var(--desktop-surface);
+  border-color: var(--desktop-border);
+}
