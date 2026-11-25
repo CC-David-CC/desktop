@@ -198,6 +198,14 @@ function icon(key, direct = false) {
     'gpu-monitor':'<rect x="3" y="5" width="18" height="13" rx="2" fill="#d9edf8"/><path d="M6 12h3l2-3 3 5 2-2h2M8 21h8m-4-3v3"/>',
     'presentation-slides':'<rect x="3" y="4" width="18" height="13" rx="1.5" fill="#f7ddca"/><path d="M6 7h12M6 10h5m-5 3h5m3-2h4v3h-4zM12 17v4m-4 0h8"/>',
     'page-layout':'<path d="M5 2h14v20H5z" fill="#e8ddf5"/><path d="M8 6h8M8 9h8v4H8zM8 16h2m3 0h3m-8 3h2m3 0h3"/>',
+    'report-chart':'<rect x="3" y="3" width="18" height="18" rx="2" fill="#fbe5b9"/><path d="M6 6v11h12M9 17v-4m4 4V9m4 8v-6"/>',
+    workbook:'<rect x="3" y="3" width="18" height="18" rx="2" fill="#d5f2ed"/><path d="M3 8h18M3 13h18M9 8v9m6-9v9M3 17h18m-9 0v4"/>',
+    matrix:'<rect x="2" y="3" width="20" height="18" rx="2" fill="#e2def7"/><path d="M8 7H6v10h2m8-10h2v10h-2M10 9h1m2 0h1m-4 6h1m2 0h1"/>',
+    'open-book':'<path d="M12 6C9 4 6 3 2 5v14c4-2 7-1 10 1 3-2 6-3 10-1V5c-4-2-7-1-10 1Z" fill="#f3d8cb"/><path d="M12 6v14M5 9c2 0 3 0 4 1m6 0c1-1 2-1 4-1"/>',
+    'writing-pen':'<path d="M4 20l2-6L16 4l4 4-10 10-6 2Z" fill="#cfe7fa"/><path d="m13 7 4 4M6 14l4 4m3 2h7"/>',
+    'rich-text':'<rect x="3" y="3" width="18" height="18" rx="2" fill="#dce5f8"/><path d="M7 15l3-7 3 7m-5-2h4m3-5h3m-3 4h3M7 18h10"/>',
+    markdown:'<rect x="2" y="5" width="20" height="14" rx="2" fill="#e0e7ed"/><path d="M5 15V9l3 4 3-4v6m6-6v6m-2-2 2 2 2-2"/>',
+    'pdf-workbench':'<path d="M7 3h9l4 4v13H7z" fill="#f6d6dc"/><path d="M16 3v5h4M4 7v15h13M10 11h7m-7 4h5"/>',
     calculator:'<rect x="4" y="2" width="16" height="20" rx="2" fill="#d8dee2"/><path fill="#b8dcdf" d="M7 5h10v5H7z"/><path d="M7 13h2m2 0h2m2 0h2M7 16h2m2 0h2m2 0h2M7 19h2m2 0h2m2 0h2"/>',
     'audio-tools':'<path d="M2 12h3l2-5 3 10 3-14 3 18 2-9h4" stroke="#32808a" stroke-width="1.8"/>',
     electronics:'<rect x="6" y="6" width="12" height="12" rx="2" fill="#c4e4cc"/><path d="M9 2v4m6-4v4m-6 12v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4m-9-4h2v2h-2z"/>',
@@ -248,7 +256,9 @@ const categoryIcons = Object.freeze({
   'System Tools':'calculator', '3D Printing':'kiri-moto'
 });
 const appIconOverrides = Object.freeze({
-  metriccraft:'spreadsheet', projectcraft:'prototype-dashboard', textcraft:'text',
+  metriccraft:'report-chart', projectcraft:'prototype-dashboard', textcraft:'markdown',
+  gridcraft:'workbook', matcraft:'matrix', lovecraft:'open-book', scriobh:'writing-pen',
+  'document-editor':'rich-text', pdfcraft:'pdf-workbench',
   deckcraft:'presentation-slides', designcraft:'page-layout',
   earthcraft:'browser', 'riscv-rust':'electronics', rustirc:'webos-chat'
 });
