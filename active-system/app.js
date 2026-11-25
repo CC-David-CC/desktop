@@ -732,7 +732,15 @@ class Desktop {
     };
     if(pendingLocalWrite())return;
     const dirty=()=>windowHasChanges(w);
-    const close=()=>{if(!this.windows.includes(w)||pendingLocalWrite())return;if(w.app==='terminal')closeTerminal(w.id);if(w.previewBytes)w.previewBytes.fill(0);this.windows=this.windows.filter(n=>n.id!==w.id);if(this.active===w.id)this.active=null;this.render();};
+    const close=()=>{
+      if(!this.windows.includes(w)||pendingLocalWrite())return;
+      if(w.app==='terminal')closeTerminal(w.id);
+      if(w.previewBytes)w.previewBytes.fill(0);
+      if(w.guestWeatherIntro)rememberGuestWeatherDismissal();
+      this.windows=this.windows.filter(n=>n.id!==w.id);
+      if(this.active===w.id)this.active=null;
+      this.render();
+    };
     if(!dirty()){close();return;}
     if(w.closeDialog?.isConnected)return;
     const dialog=document.createElement('dialog');dialog.className='codi-confirm-dialog';dialog.setAttribute('aria-labelledby','codi-close-title-'+w.id);dialog.setAttribute('aria-describedby','codi-close-message-'+w.id);
@@ -1012,6 +1020,15 @@ function loadAccountPanelPins(){
   panelPins.reset(signedInSubject()&&serverFilesAvailable()?serverFileContext:null);
   void panelPins.refresh().catch(error=>feedback('Could not load the app bar. '+error.message));
 }
+const guestWeatherDismissalKey='webos:guest-weather-maps-dismissed';
+function guestWeatherDismissed(){
+  try{return localStorage.getItem(guestWeatherDismissalKey)==='1';}
+  catch{return false;}
+}
+function rememberGuestWeatherDismissal(){
+  try{localStorage.setItem(guestWeatherDismissalKey,'1');}
+  catch{/* Browser preferences are unavailable. */}
+}
 async function initializeSession(){
   const response=await fetch('config.json',{cache:'no-store'});
   if(!response.ok)throw Error('Identity configuration could not be loaded.');
@@ -1044,9 +1061,10 @@ async function initializeSession(){
   for(const surface of surfaces.values()){surface.restoreLayout();surface.render();}
   if (session.public.kind === 'anonymous') {
     const desktop = surfaces.get('Desktop');
-    if (desktop && enabledApp('weather-maps')) {
+    if (desktop && enabledApp('weather-maps') && !guestWeatherDismissed()) {
       const win = desktop.launch('weather-maps');
       if (win) {
+        win.guestWeatherIntro = true;
         win.restore = {x:win.x, y:win.y, w:win.w, h:win.h};
         Object.assign(win, {x:0,y:0,w:desktop.workWidth(),h:resolution[1]});
         desktop.render();
