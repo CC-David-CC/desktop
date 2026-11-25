@@ -27,6 +27,8 @@ function publicAppHost(desktop,w,id){return {version:2,desktop,w,...(id==='micro
     ...(officeWorkspaceApps.has(id) ? {
       mirrorFileContext: workspaceMirrorContext,
       signedInSubject: workspaceOwner,
+      pickFile: pickOfficeWorkspaceFile,
+      pickFolder: ({signal} = {}) => pickOfficeWorkspaceFile({signal, foldersOnly:true}),
     } : {})
   },tools:{loadNarrator:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));const {narrate,renderAudio,voices,sampleRate}=await loader.loadApp('narrator');return {narrate,renderAudio,voices,sampleRate};},loadGLTFTransform:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('gltf-transform');},loadOpenCascade:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('opencascade');},loadYjs:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('yjs')).library;},loadWebTorrent:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('webtorrent')).library;},loadOnnxRuntime:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('onnx-runtime')).library;},loadTanStackVirtual:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('tanstack-virtual')).library;},loadTrystero:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('trystero')).library;},loadCodeMirror:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return l.loadApp('codemirror');},loadMermaid:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('mermaid')).library;},loadECharts:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('echarts')).library;},loadPlotly:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('plotly')).library;},loadPdfme:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('pdfme')).library;},loadTransformers:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('transformers')).library;},loadMapLibre:async()=>{const l=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await l.loadApp('maplibre')).library;},loadZip:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return loader.loadApp('zip');},createFFmpeg:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('ffmpeg')).createFFmpeg();},createWaveSurfer:async options=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('wavesurfer')).createWaveSurfer(options);},loadTone:async()=>{const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));return (await loader.loadApp('tone')).Tone;}},terminal:{accountHome:useAccountGuestHome,terminalSession,sendTerminalBytes,sendTerminal:(...args)=>sendTerminal(...args),attachTerminalRenderer,resizeTerminal,enableKeyboard:()=>setScreenKeyboardEnabled(true)}};}
 function publicAppContent(id,desktop,w){
@@ -233,6 +235,16 @@ async function pickStorageFile(loadContext,{extensions=[],signal,foldersOnly=fal
   }catch(error){if(!closed&&n===revision){list.replaceChildren();rendered='';chooseFolder.disabled=true;status.textContent=error.message;}}
  }
  return new Promise(resolve=>{finish=value=>{if(closed)return;closed=true;revision++;unsubscribe();signal?.removeEventListener('abort',aborted);if(dialog.open)dialog.close();dialog.remove();resolve(value);};const aborted=()=>finish(null);signal?.addEventListener('abort',aborted,{once:true});dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});if(signal?.aborted){finish(null);return;}dialog.showModal();unsubscribe=context.files.subscribe?.(()=>{if(!closed)refresh();})??unsubscribe;refresh();});
+}
+function pickOfficeWorkspaceFile(options) {
+  return pickStorageFile(async () => {
+    const context = await workspaceMirrorContext();
+    if (context.storage !== 'temporary') {
+      // Files uploads go straight to the server. Pull changes for older editors' mirror pickers.
+      void context.files.sync().catch(error => console.warn('Could not refresh the Office file picker.', error.message));
+    }
+    return context;
+  }, options);
 }
 function pickMirrorFile(options){return pickStorageFile(workspaceMirrorContext,options);}
 async function pickMirrorFolder({signal}={}){return pickMirrorFile({signal,foldersOnly:true});}
