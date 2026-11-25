@@ -825,12 +825,20 @@ class Desktop {
   }
   async showDeviceStorage(anchor){
     this.closePopups();const popup=make('div','status-popup popup'),status=make('p','','Checking browser storage…');popup.setAttribute('aria-label','Device storage');
-    popup.append(make('h3','','Device storage'),make('p','','Keep downloaded app code, Linux boot files and voice models on this device. This does not save your running Linux session, unsaved documents, passwords or private server files.'),status);
-    const keep=textButton('Keep loaded app files on this device',async()=>{
-      keep.disabled=true;status.textContent='Requesting storage and caching files already loaded by this tab…';
-      try{const module=await deviceCacheModule,result=await module.keepLoadedAppFiles();if(popup.isConnected)status.textContent=result.items+' app files cached ('+Math.round(result.bytes/1048576)+' MiB). '+(result.persistent?'The browser granted persistent storage.':'The browser did not grant persistent storage; cached files may be evicted.')+' Clearing site data removes them. Server files are unaffected.';}
-      catch(error){if(popup.isConnected)status.textContent='Could not finish caching: '+error.message+'. The server remains available as the normal source.';}finally{keep.disabled=false;}
-    });popup.append(keep,textButton('Close',()=>this.closePopups()));this.root.append(popup);this.popupBackdrop();this.positionPopup(popup,this.localLeft(anchor),this.localTop(anchor));
+    const details = viewerProfile.offlineCache
+      ? 'Keep downloaded app code, Linux boot files and voice models on this device. This does not save your running Linux session, unsaved documents, passwords or private server files.'
+      : 'Open WebOS while connected. If the connection drops, you can keep working in supported apps that are already open. Clearing site data can remove work saved only on this device.';
+    status.setAttribute('role','status');
+    popup.append(make('h3','','Device storage'),make('p','',details),status);
+    if(viewerProfile.offlineCache){
+      const keep=textButton('Keep loaded app files on this device',async()=>{
+        keep.disabled=true;status.textContent='Requesting storage and caching files already loaded by this tab…';
+        try{const module=await deviceCacheModule,result=await module.keepLoadedAppFiles();if(popup.isConnected)status.textContent=result.items+' app files cached ('+Math.round(result.bytes/1048576)+' MiB). '+(result.persistent?'The browser granted persistent storage.':'The browser did not grant persistent storage; cached files may be evicted.')+' Clearing site data removes them. Server files are unaffected.';}
+        catch(error){if(popup.isConnected)status.textContent='Could not finish caching: '+error.message+'. The server remains available as the normal source.';}finally{keep.disabled=false;}
+      });
+      popup.append(keep);
+    }
+    popup.append(textButton('Close',()=>this.closePopups()));this.root.append(popup);this.popupBackdrop();this.positionPopup(popup,this.localLeft(anchor),this.localTop(anchor));
     try{const info=await (await deviceCacheModule).deviceStorageInfo();if(popup.isConnected)status.textContent='This domain uses approximately '+Math.round((info.usage||0)/1048576)+' MiB of the browser’s estimated '+Math.round((info.quota||0)/1048576)+' MiB allowance. '+(info.persistent?'Storage is persistent.':'Storage is currently best effort.')+(info.updateWaiting?' An app update will activate after existing tabs close.':'');}catch(error){if(popup.isConnected)status.textContent=error.message;}
   }
   async requestWindowClose(w) {
