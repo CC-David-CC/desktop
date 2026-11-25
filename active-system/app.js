@@ -481,13 +481,14 @@ class Desktop {
     this.menuParentLabels??=[];
     this.menuParentLabels[depth]=parentLabel;
     if(this.mobile&&depth>0){
+      pane.classList.add('has-menu-back');
       const back=textButton('‹ Back',event=>{
         const parent=this.showMenu(this.menuLevels[depth-1],depth-1,8,0,this.menuParentLabels[depth-1]);
         if(event.detail===0){
           const rows=[...parent.querySelectorAll('button:not(:disabled)')];
           (rows.find(row=>row.getAttribute('aria-label')===parentLabel)||rows[0])?.focus();
         }
-      },'menu-row');
+      },'menu-row menu-back');
       pane.append(back);
     }
     for(const entry of items) {
@@ -521,6 +522,7 @@ class Desktop {
     pane.addEventListener('keydown',e=>{
       const rows=[...pane.querySelectorAll('button:not(:disabled)')],index=rows.indexOf(document.activeElement);
       if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();rows[(index+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length]?.focus();}
+      if(e.key==='Home'||e.key==='End'){e.preventDefault();rows.at(e.key==='Home'?0:-1)?.focus();}
     });
     this.root.append(pane);this.popupBackdrop();this.positionPopup(pane,x,y);
     return pane;

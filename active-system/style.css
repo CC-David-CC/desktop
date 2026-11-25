@@ -75,6 +75,8 @@ html.android-chrome-scroll body{height:calc(100dvh + 180px);overflow:visible}
 .compact-desktop .menu-pane,.compact-desktop .status-popup,.compact-desktop .task-popup{min-width:0;border-radius:8px;font-size:16px}
 .compact-desktop .popup-backdrop{position:absolute;inset:var(--panel-height) 0 0;z-index:60;border:0;background:#0002;cursor:default}
 .compact-desktop .menu-row{min-height:44px;padding:8px 12px;white-space:normal}
+.compact-desktop .menu-pane.has-menu-back{scroll-padding-top:44px}
+.compact-desktop .menu-back{position:sticky;top:0;z-index:1;border-bottom:1px solid var(--desktop-border)}
 .compact-desktop .menu-row .icon{width:22px;height:22px}
 .compact-desktop .status-popup button,.compact-desktop .task-popup button{min-height:44px}
 .compact-desktop .app-toolbar{padding:4px;gap:4px}
