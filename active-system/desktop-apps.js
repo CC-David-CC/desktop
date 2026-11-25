@@ -180,8 +180,8 @@ async function mirrorFileContext(){
     const files=await context.openAccountFileMirror({issuer:identityConfig.identity.issuer,owner,server:server.files,valid:server.valid,storage:identityConfig.fileStorage??null});
     if(generation!==mirrorGeneration||currentSession!==session||signedInSubject()!==owner){files.close();throw Error('Account changed. Reopen your files.');}
     mirrorInstance=files;
-    // The browser decides whether to grant persistent storage; no guarantee.
-    navigator.storage?.persist?.().catch(()=>{});files.sync().catch(()=>{});
+    // Device storage requests persistence only from its explicit action.
+    files.sync().catch(()=>{});
     return {owner,files,valid:server.valid,path:module.filePath,name:module.fileName};
   })().catch(error=>{if(generation===mirrorGeneration&&mirrorSession===session)mirrorContextPromise=null;throw error;});}
   return mirrorContextPromise;
