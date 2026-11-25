@@ -27,18 +27,21 @@ function virtual(path) {
 }
 
 export function mount(host) {
+  const launch = host.w.launchContext;
   const owner = host.storage.workspaceOwner();
   const session = host.session();
   const controller = new AbortController();
   const {signal} = controller;
   const root = element('section', {className: 'window-content textcraft-workspace'});
   const view = element('iframe', {title: 'TextCraft', allow: 'clipboard-read; clipboard-write'});
+  view.inert = Boolean(launch);
   const status = element('p', {textContent: 'Starting TextCraft…'});
   status.setAttribute('role', 'status');
   root.append(element('link', {rel: 'stylesheet', href: new URL('./workspace.css', import.meta.url).href}), view, status);
 
   const folders = new Set(['']);
-  let context, openFile, unregister, binding;
+  let context, unregister, binding, initialFile, initialPath;
+  let editorReady = false;
   let dirty = false;
   let transferring = false;
   let writes = Promise.resolve();
@@ -50,6 +53,10 @@ export function mount(host) {
   const timer = setTimeout(() => startReject(Error('TextCraft took too long to start.')), 90000);
   signal.addEventListener('abort', () => startReject(signal.reason), {once: true});
   start.catch(() => {});
+
+  function finishStart() {
+    if (editorReady && (!launch || binding?.path === initialPath)) startResolve();
+  }
 
   function check() {
     if (signal.aborted || host.session() !== session || host.storage.workspaceOwner() !== owner || !context?.valid()) {
@@ -113,8 +120,17 @@ export function mount(host) {
   }
 
   view.textcraftFiles = {
-    onOpen(callback) { openFile = callback; },
-    ready() { startResolve(); },
+    onOpen(callback) {
+      if (initialFile) {
+        const file = initialFile;
+        initialFile = undefined;
+        callback(file);
+      }
+    },
+    ready() {
+      editorReady = true;
+      finishStart();
+    },
     failed(message) { startReject(Error(message)); },
     setUnsaved(value) { dirty = value; },
     status(message) { if (!signal.aborted) status.textContent = message; },
@@ -152,6 +168,7 @@ export function mount(host) {
       if (target && !revision.test(sha256)) throw Error('This document has an invalid Files revision.');
       binding = target == null ? undefined : {path: target, sha256};
       host.desktop.updateAccountFileBinding(host.w, {owner, path: target, sha256: binding?.sha256 ?? null});
+      finishStart();
     },
   };
 
@@ -159,6 +176,15 @@ export function mount(host) {
     context = await host.storage.workspaceFileContext();
     check();
     if (context.owner !== owner) throw Error('This editor belongs to another Files workspace.');
+    if (launch) {
+      if (launch.storage !== 'account' || launch.owner !== owner) throw Error('Open the session from My files.');
+      initialPath = workspacePath(launch.path);
+      status.textContent = 'Opening ' + nameOf(initialPath) + '…';
+      initialFile = await read(initialPath);
+      if (!launch.restore && launch.sha256 && launch.sha256 !== initialFile.sha256) {
+        throw Error('The session changed in Files. Open its current revision.');
+      }
+    }
     view.src = new URL('./native/index.html', import.meta.url).href;
     await start;
     check();
@@ -172,14 +198,8 @@ export function mount(host) {
         view.inert = false;
       };
     });
-    status.textContent = 'TextCraft is ready';
-    const launch = host.w.launchContext;
-    if (launch) {
-      if (launch.storage !== 'account' || launch.owner !== owner) throw Error('Open the session from My files.');
-      const loaded = await read(workspacePath(launch.path));
-      if (!launch.restore && launch.sha256 && launch.sha256 !== loaded.sha256) throw Error('The session changed in Files. Open its current revision.');
-      openFile(loaded);
-    }
+    view.inert = false;
+    status.textContent = launch ? 'Opened ' + nameOf(initialPath) : 'TextCraft is ready';
   })().finally(() => clearTimeout(timer));
   ready.catch(error => { if (!signal.aborted) status.textContent = error.message; });
 
