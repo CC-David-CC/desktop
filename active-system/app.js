@@ -196,6 +196,9 @@ function icon(key, direct = false) {
     'clockwork-quest':'<circle cx="12" cy="12" r="8" fill="#d6b36a" stroke="#604a2a"/><path d="M12 7v5l3 2M4 5l3 3m13-3-3 3M4 19l3-3m13 3-3-3" stroke="#604a2a"/><circle cx="12" cy="12" r="2" fill="#e46c57"/>',
     'memory-garden':'<rect x="3" y="4" width="7" height="9" rx="1" fill="#d8e8c0" stroke="#5b7d4e"/><rect x="14" y="11" width="7" height="9" rx="1" fill="#e8d7b7" stroke="#7a5d35"/><circle cx="7" cy="8" r="2" fill="#d4b85e"/><path d="M15 16h5m-2.5-2.5v5" stroke="#5b7d4e"/>',
     calculator:'<rect x="4" y="2" width="16" height="20" rx="2" fill="#d8dee2"/><path fill="#b8dcdf" d="M7 5h10v5H7z"/><path d="M7 13h2m2 0h2m2 0h2M7 16h2m2 0h2m2 0h2M7 19h2m2 0h2m2 0h2"/>',
+    'audio-tools':'<path d="M2 12h3l2-5 3 10 3-14 3 18 2-9h4" stroke="#32808a" stroke-width="1.8"/>',
+    electronics:'<rect x="6" y="6" width="12" height="12" rx="2" fill="#c4e4cc"/><path d="M9 2v4m6-4v4m-6 12v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4m-9-4h2v2h-2z"/>',
+    video:'<rect x="3" y="4" width="18" height="16" rx="2" fill="#dcd8f2"/><path d="M3 8h18M3 16h18M7 4v4m5-4v4m5-4v4M7 16v4m5-4v4m5-4v4M10 10l4 2-4 2z"/>',
     help:'<circle cx="12" cy="12" r="10" fill="#d4e8fb"/><path d="M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4m0 3v1"/>'
   };
   if(drawings[key]){
@@ -237,6 +240,33 @@ const desktopMenu=[
   {separator:true},{name:'Help',icon:'help'},{name:'End session',icon:'end-session'}
 ];
 const applicationIds=Object.freeze({'Account Management':'account-management','MailCraft':'mailcraft','MetricCraft':'metriccraft','FreeDAWm':'freedawm','LoveCraft':'lovecraft','Remote Desktop':'remote-desktop','RustIRC':'rustirc','WebOS Chat':'webos-chat','GPU Monitor':'gpu-monitor','ProjectCraft':'projectcraft','RISC-V Machine Lab':'riscv-rust','ESP32 Firmware Lab':'esp32sim','Virtual FPGA Board':'softfpga','Circuit Lab':'circuit-lab','OpenCADStudio':'opencadstudio','Picasso Suite':'picasso-suite','Align':'align','EarthCraft':'earthcraft','TextCraft':'textcraft','Suhina':'suhina','Retake':'retake','Pro Wave':'pro-wave','OxiGuitar':'oxiguitar','MixStudio':'mixstudio','Lemon Studio':'lemon-studio','Honeydew':'honeydew','ProCraft':'procraft','PixelCraft':'pixelcraft','LightCraft Classic':'chromaforge','FireCraft':'firecraft','OxyBrush':'oxybrush','HumanMotionCraft':'humanmotioncraft','HDL Workbench':'hdl-workbench','TraceDraw':'tracedraw','Scríobh':'scriobh','MathCraft2':'mathcraft2','SubCraft':'subcraft','Transit':'transit','PaintCraft':'paintcraft','Paint.RS':'paint-rs','CuePool':'cuepool','MatCraft':'matcraft','ClothCraft':'clothcraft','NoteCraft':'notecraft','I-SUCCESS':'i-success','Narrator':'narrator',...Object.fromEntries(Object.entries({...drakonApps,...learningGames}).map(([id,name])=>[name,id])),'Linux X11':'linux-x11','MathCraft':'mathcraft','Weather':'weather','Weather Maps':'weather-maps','Microduck':'microduck','Falling Blocks (preview)':'falling-blocks','Owl Companion (preview)':'owl-companion','Physics Playground (preview)':'physics-playground','Snake Garden (preview)':'snake-garden','Clockwork Room (preview)':'clockwork-room','Chess Study (preview)':'chess-study','Solitaire (preview)':'solitaire','Sky Courier (preview)':'sky-courier','Marble Works (preview)':'marble-works','Stack & Balance (preview)':'stack-balance','Crystal Defense (preview)':'crystal-defense','Drone Circuit (preview)':'drone-circuit','Reactive Control Desk (preview)':'reactive-control-desk','Story Cards (preview)':'story-cards','Expression Puppet (preview)':'expression-puppet','Rhythm Garden (preview)':'rhythm-garden','Lantern Leap (preview)':'lantern-leap','Garden Defense (preview)':'garden-defense','Pocket Rally (preview)':'pocket-rally','Sling Targets (preview)':'sling-targets','Gravity Pinball (preview)':'gravity-pinball','Kinetic Relay (preview)':'kinetic-relay','Tabletop Bot Arena (preview)':'tabletop-bot-arena','Pocket Golf (preview)':'pocket-golf','Target Garden (preview)':'target-garden','Orbital Courier (preview)':'orbital-courier','Clockwork Quest (preview)':'clockwork-quest','Memory Garden (preview)':'memory-garden','Browser (in development)':'browser','Terminal':'terminal','Files':'files','Text Editor':'text','Document Editor':'document-editor','Spreadsheet':'spreadsheet','Data Explorer (Perspective)':'data-explorer','Audio Editor':'audio-editor','G-code Preview':'gcode-preview','Excalidraw':'excalidraw','SVG-edit':'svg-editor','diagrams.net':'diagrams-net','Python Notebook — Browser':'notebook','Arduino Simulator':'arduino-simulator','Pico Simulator':'pico-simulator','Circuit Simulator':'circuitjs','jSketcher':'jsketcher','Electronics Design':'electronics-design','Digital Logic':'digital-logic','Embroidery Studio':'embroidery-studio','Stitch Converter':'stitch-converter','Replicad':'replicad','Kiri:Moto':'kiri-moto','Mesh:Tool':'mesh-tool','PDF Viewer':'pdf-viewer','Image Editor':'image-editor','Calculator':'calculator','Help':'help','WordCraft':'wordcraft','PdfCraft':'pdfcraft','GridCraft':'gridcraft','DeckCraft':'deckcraft','PhotoCraft':'photocraft','VectorCraft':'vectorcraft','DesignCraft':'designcraft','FigCraft':'figcraft','AniCraft':'anicraft','LightCraft':'lightcraft','FilmCraft':'filmcraft','EffectCraft':'effectcraft','SoundCraft':'soundcraft','CADCraft':'cadcraft','SolidCraft':'solidcraft','PCBCraft':'pcbcraft','FieldCraft':'fieldcraft','SketchCraft':'sketchcraft','TextureCraft':'texturecraft','MaterialCraft':'materialcraft'});
+const categoryIcons = Object.freeze({
+  'Audio Tools':'audio-tools', Electronics:'electronics', 'Animation & Video':'video',
+  'System Tools':'calculator', '3D Printing':'kiri-moto'
+});
+const appIconOverrides = Object.freeze({
+  metriccraft:'spreadsheet', projectcraft:'prototype-dashboard', textcraft:'text',
+  earthcraft:'browser', 'riscv-rust':'electronics', rustirc:'webos-chat'
+});
+const applicationIconKeys = new Map();
+function collectApplicationIcons(entries, category) {
+  for (const entry of entries) {
+    if (entry.children) {
+      collectApplicationIcons(entry.children, categoryIcons[entry.name] || entry.icon);
+      continue;
+    }
+    const app = applicationIds[entry.name];
+    if (!app) continue;
+    const key = appIconOverrides[app] || (entry.icon === 'help' && app !== 'help' ? category || entry.icon : entry.icon);
+    if (key) applicationIconKeys.set(app,key);
+  }
+}
+collectApplicationIcons(desktopMenu);
+function appIcon(app) {
+  const key = applicationIconKeys.get(app);
+  return key ? icon(key,!!reference.icons[key]||key.includes('/')) : icon(app);
+}
+
 // Presentation only: menu dispatch, persisted IDs, and app-owned titles stay unchanged.
 // Each entry lists the existing menu name, the user-facing name, and former title aliases.
 function menuDisabledTitle(entry){if(entry.disabled)return entry.disabledTitle||'Background tool available to applications';if((applicationIds[entry.name]&&!enabledApp(applicationIds[entry.name]))||(entry.name==='Voice input'&&!viewerProfile.speech))return 'Not enabled in this test release';return null;}
@@ -427,7 +457,7 @@ class Desktop {
         if(e.shiftKey||e.ctrlKey||e.metaKey||!windows.length){this.launch(app);return;}
         this.showTasks(app,windows,b);
       },'task'+(windows.length?' running':'')+(active?' active':''));
-      b.dataset.app=app;b.append(icon(app));b.disabled=!enabledApp(app);
+      b.dataset.app=app;b.append(appIcon(app));b.disabled=!enabledApp(app);
       b.setAttribute('aria-pressed',String(active));b.title=label+': '+windows.length+' open'+(windows.some(w=>w.minimized)?' (including minimized)':'');
       if(windows.length)b.append(make('span','count',windows.length));
       b.addEventListener('contextmenu',e=>{e.preventDefault();this.closePopups();this.showTasks(app,windows,b);});
@@ -465,7 +495,9 @@ class Desktop {
       const displayName=applicationMenuNames.get(entry)||entry.name;
       const row=button(displayName,null,'menu-row');row.setAttribute('role','menuitem');const disabledTitle=menuDisabledTitle(entry);if(disabledTitle){row.disabled=true;row.title=disabledTitle;}
       const arrow=make('span','arrow',entry.children?'‹':'');arrow.setAttribute('aria-hidden','true');
-      row.append(arrow,icon(entry.icon,!!reference.icons[entry.icon]||String(entry.icon||'').includes('/')),make('span','row-text',displayName));
+      const app=applicationIds[entry.name], key=categoryIcons[entry.name] || entry.icon;
+      const glyph=app ? appIcon(app) : icon(key,!!reference.icons[key]||String(key||'').includes('/'));
+      row.append(arrow,glyph,make('span','row-text',displayName));
       const open=()=>{
         pane.querySelectorAll('.selected').forEach(n=>n.classList.remove('selected'));row.classList.add('selected');
         if(entry.children){
@@ -715,7 +747,7 @@ class Desktop {
     win.dataset.window=w.id;win.setAttribute('aria-label',displayedWindowTitle(w));win.style.left=w.x+'px';win.style.top=w.y+'px';
     win.style.width=w.w+'px';win.style.height=(w.rolled?this.config.titleHeight+reference.frameBorderBottom:w.h)+'px';
     win.addEventListener('pointerdown',()=>{if(this.active!==w.id){this.active=w.id;this.root.querySelectorAll('.window.focused').forEach(n=>n.classList.remove('focused'));win.classList.add('focused');this.root.querySelectorAll('.task').forEach(n=>{const active=n.dataset.app===w.app;n.classList.toggle('active',active);n.setAttribute('aria-pressed',String(active));});}});
-    const caption=make('div','window-caption');caption.append(icon(w.app),make('span','caption-text',displayedWindowTitle(w)));
+    const caption=make('div','window-caption');caption.append(appIcon(w.app),make('span','caption-text',displayedWindowTitle(w)));
     const controls=make('div','window-controls');
     const actions=[
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
