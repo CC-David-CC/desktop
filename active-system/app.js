@@ -520,6 +520,12 @@ class Desktop {
       win.querySelector('.caption-text').textContent=displayedWindowTitle(w);win.setAttribute('aria-label',displayedWindowTitle(w));
       const roll=win.querySelector('.window-controls button');roll.setAttribute('aria-label',w.rolled?'Unroll':'Roll up');roll.title=w.rolled?'Unroll':'Roll up';
       roll.querySelector('path').setAttribute('d',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16');
+      const maximize=win.querySelector('.window-maximize');
+      const maximizeLabel=w.restore?'Restore':'Maximize';
+      if(maximize.title!==maximizeLabel){
+        maximize.setAttribute('aria-label',maximizeLabel);
+        maximize.title=maximizeLabel;
+      }
     }
     this.scale();
     if(this.menu&&!keepMenu)this.showMenu(this.applicationItems(),0,0,0);
@@ -865,11 +871,11 @@ class Desktop {
     const actions=[
       [w.rolled?'Unroll':'Roll up',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16',()=>{w.rolled=!w.rolled;}],
       ['Minimize','M4 19 H20',()=>{w.minimized=true;this.active=null;}],
-      ['Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:0,w:this.workWidth(),h:resolution[1]});}}],
+      [w.restore?'Restore':'Maximize','M5 5 H19 V19 H5 Z',()=>{if(w.restore){Object.assign(w,w.restore);delete w.restore;}else{w.restore={x:w.x,y:w.y,w:w.w,h:w.h};Object.assign(w,{x:0,y:0,w:this.workWidth(),h:resolution[1]});}},'window-maximize'],
       ['Close','M5 5 L19 19 M19 5 L5 19',()=>{this.requestWindowClose(w);return false;}]
     ];
-    actions.forEach(([name,path,action])=>{
-      const b=button(name,()=>{if(action()===false)return;if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();});b.title=name;
+    actions.forEach(([name,path,action,controlClass])=>{
+      const b=button(name,()=>{if(action()===false)return;if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();},controlClass);b.title=name;
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');
       const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',path);svg.append(p);b.append(svg);controls.append(b);
     });
