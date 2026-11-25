@@ -38,6 +38,10 @@ function publicAppContent(id,desktop,w){
     try{
       const loader=await (publicAppLoader??=import('./assets/desktop/apps.mjs'));
       const module=await loader.loadApp(id);
+      if(officeWorkspaceApps.has(id)&&currentSession?.public.kind==='anonymous'){
+        // Prepare the temporary workspace before the first edit or save.
+        await workspaceMirrorContext().catch(error=>console.warn('Temporary files unavailable:',error.message));
+      }
       if(!placeholder.isConnected||desktop&&!desktop.windows.includes(w))return;
       const host=publicAppHost(desktop,w,id);
       if(id==='files')host.refreshPanelPins=()=>panelPins?.refresh();
