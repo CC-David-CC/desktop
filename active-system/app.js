@@ -273,9 +273,9 @@ function icon(key, direct = false) {
     'market-tag':'<path d="M2 7h11l5 5-5 5H2Z" fill="#f1cf9b"/><circle cx="5" cy="12" r="1.3" fill="#fff1cf"/><circle cx="17" cy="16" r="5" fill="#f3deaa"/><path d="M17 13v6" stroke="#967044"/>',
     'territory-flag':'<path d="M6 2v20M6 4h14l-4 4 4 4H6" fill="#dcbad9" stroke="#795583"/><path d="M9 4v4h4V4m0 4v4h4V8" fill="#855f95" stroke="none"/>',
     'island-tiles':'<path d="m7 3 5 3v6l-5 3-5-3V6Zm10 3 5 3v6l-5 3-5-3V9ZM9 13l5 3v4l-5 3-5-3v-4Z" fill="#b7debc" stroke="#56867f"/><path d="m12 9 5 3 5-3M4 16l5 3 5-3" stroke="#79aaca"/>',
-    'notes-tabs':'<rect x="4" y="3" width="13" height="18" rx="2" fill="#e5d7f4"/><path d="M8 3v18m3-13h3m-3 4h3m-3 4h3M17 7h4v4h-4m0 3h4v4h-4" stroke="#786198"/>
-    'study-star':'<path d="M3 6h5l4 2 4-2h5v13h-5l-4 2-4-2H3Z" fill="#d5e8dd"/><path d="M12 8v13m-6-9h3m-3 3h3m8-13 .7 2.1L20 5l-2.3.9L17 8l-.7-2.1L14 5l2.3-.9Z" stroke="#567e69"/>
-    'irc-channel':'<path d="M3 4h18v13H9l-5 4v-4H3Z" fill="#d5e4ed"/><path d="m11 7-2 7m6-7-2 7m-6-5h10M7 12h10" stroke="#486b84"/>
+    'notes-tabs':'<rect x="4" y="3" width="13" height="18" rx="2" fill="#e5d7f4"/><path d="M8 3v18m3-13h3m-3 4h3m-3 4h3M17 7h4v4h-4m0 3h4v4h-4" stroke="#786198"/>',
+    'study-star':'<path d="M3 6h5l4 2 4-2h5v13h-5l-4 2-4-2H3Z" fill="#d5e8dd"/><path d="M12 8v13m-6-9h3m-3 3h3m8-13 .7 2.1L20 5l-2.3.9L17 8l-.7-2.1L14 5l2.3-.9Z" stroke="#567e69"/>',
+    'irc-channel':'<path d="M3 4h18v13H9l-5 4v-4H3Z" fill="#d5e4ed"/><path d="m11 7-2 7m6-7-2 7m-6-5h10M7 12h10" stroke="#486b84"/>',
     video:'<rect x="3" y="4" width="18" height="16" rx="2" fill="#dcd8f2"/><path d="M3 8h18M3 16h18M7 4v4m5-4v4m5-4v4M7 16v4m5-4v4m5-4v4M10 10l4 2-4 2z"/>',
     help:'<circle cx="12" cy="12" r="10" fill="#d4e8fb"/><path d="M9 8a3 3 0 1 1 5 2c-2 1-2 2-2 4m0 3v1"/>'
   };
