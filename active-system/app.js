@@ -508,7 +508,7 @@ class Desktop {
   }
   open(app,context){
     const keys=context&&Object.keys(context).sort().join(',');
-    const revisionApp=['calculator','jsketcher','notebook','image-editor','svg-editor','excalidraw','diagrams-net','replicad','embroidery-studio','arduino-simulator','digital-logic','circuitjs','electronics-design','kiri-moto','mesh-tool','document-editor','spreadsheet','data-explorer'].includes(app);
+    const revisionApp=['calculator','jsketcher','notebook','image-editor','svg-editor','excalidraw','diagrams-net','replicad','embroidery-studio','arduino-simulator','digital-logic','circuitjs','electronics-design','kiri-moto','mesh-tool','document-editor','spreadsheet','data-explorer','pdf-viewer'].includes(app);
     const temporaryFile=revisionApp&&context?.storage==='temporary'&&currentSession?.public.kind==='anonymous';
     const hasSelectedRevision=revisionApp&&(context?.storage==='mirror'||temporaryFile)&&keys==='owner,path,sha256,storage,version'&&typeof context.sha256==='string'&&/^[a-f0-9]{64}$/.test(context.sha256);
     if(!['calculator','microduck','text','image-editor','document-editor','pdf-viewer','spreadsheet','data-explorer','audio-editor','gcode-preview','mesh-tool','kiri-moto','excalidraw','svg-editor','replicad','digital-logic','circuitjs','jsketcher','electronics-design','arduino-simulator','pico-simulator','stitch-converter','embroidery-studio','diagrams-net','notebook','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden'].includes(app)||!context||(keys!=='owner,path,storage,version'&&!hasSelectedRevision)||context.version!==1||(app==='calculator'&&!hasSelectedRevision)||(context.storage!=='mirror'&&!(temporaryFile&&hasSelectedRevision)&&!(context.storage==='guest'&&app==='text'))||typeof context.path!=='string'||context.path.length>2048||typeof context.owner!=='string')throw Error('Unsupported document launch context');
@@ -553,9 +553,9 @@ class Desktop {
     if(view?.focus){w.focusWhenReady=false;view.focus();}
     return w;
   }
-  openAccountFile(app,resource){
+  openAccountFile(app,resource,{matchAppOnly=false}={}){
     if(!Object.hasOwn(accountDocumentNames,app)||!enabledApp(app)||!workspaceOwner()||resource.owner!==workspaceOwner()||typeof resource.path!=='string'||resource.path.startsWith('/')||resource.path.split('/').some(p=>!p||p==='.'||p==='..')||!/^[0-9a-f]{64}$/.test(resource.sha256))throw Error('An exact account file is required.');
-    const existing=this.activateAccountFile(resource);if(existing)return existing;
+    const existing=this.activateAccountFile(resource,matchAppOnly?app:null);if(existing)return existing;
     const w=this.launch(app,resource.path.split('/').pop()+' — '+accountDocumentNames[app]);
     w.launchContext=Object.freeze({version:1,storage:'account',path:resource.path,sha256:resource.sha256,owner:resource.owner});w.ownerSub=resource.owner;this.saveLayout();return w;
   }
