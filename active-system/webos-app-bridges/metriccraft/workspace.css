@@ -15,10 +15,20 @@
 
 .metriccraft-workspace footer {
   display: flex;
+  flex-flow: row wrap;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: 4px 12px;
+  margin: 0;
   padding: 4px 8px;
+  color: inherit;
   font: 12px system-ui, sans-serif;
+}
+
+.metriccraft-workspace footer [role="status"] {
+  flex: 1 1 16rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .metriccraft-workspace a {
