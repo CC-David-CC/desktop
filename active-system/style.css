@@ -273,6 +273,11 @@ body { background: var(--desktop-surface); }
 }
 .codi-picker-list { border-color: var(--desktop-border); }
 .codi-picker-list button:hover, .codi-picker-list button:focus { background: var(--desktop-raised); }
+.codi-file-picker > .app-status {
+  color: var(--desktop-muted);
+  background: transparent;
+  border-color: var(--desktop-border);
+}
 .login-form input {
   color: var(--desktop-text);
   background: var(--desktop-surface);
