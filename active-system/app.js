@@ -1393,7 +1393,10 @@ async function changeAccount(mode,username='',password='',stillWanted=()=>true){
     // This release uses the shared server-authoritative account file service.
     for(const surface of surfaces.values()){surface.closePopups();surface.restoreLayout();surface.render();}
     if(v86Instance&&guestFiles.ready)v86Instance.create_file('/session.json',new TextEncoder().encode(JSON.stringify({sessionId:next.id,kind:next.kind,displayName:next.displayName}))).catch(()=>{});
-    feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
+    if(mode==='register'&&identityConfig?.codiCoin?.signupAmount){
+      const amount=new Intl.NumberFormat().format(BigInt(identityConfig.codiCoin.signupAmount));
+      feedback('Your starting balance is '+amount+' CC.');
+    }else feedback(mode==='anonymous'?'Signed out. Continuing as Anon.':'Signed in as '+next.displayName+'.');
   }finally{
     thawGuest?.();
     if(transferringWorkspace)transferringWorkspace.transferring=false;
