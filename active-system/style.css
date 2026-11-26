@@ -71,6 +71,11 @@ html.android-chrome-scroll body{height:calc(100dvh + 180px);overflow:visible}
 .compact-desktop .window-controls button:first-child{display:flex}
 .compact-desktop .window-controls button{min-height:44px}
 .compact-desktop .resize-handle{width:44px;height:44px;z-index:2}
+.single-app-phone .window{border:0;border-radius:0}
+.single-app-phone .window-controls button:first-child,
+.single-app-phone .window-maximize,
+.single-app-phone .resize-handle{display:none}
+.single-app-phone .window-caption{cursor:default}
 .compact-desktop .window:has(.terminal-content)>.resize-handle{bottom:104px}
 .compact-desktop .menu-pane,.compact-desktop .status-popup,.compact-desktop .task-popup{min-width:0;border-radius:8px;font-size:16px}
 .compact-desktop .popup-backdrop{position:absolute;inset:var(--panel-height) 0 0;z-index:60;border:0;background:#0002;cursor:default}
@@ -239,6 +244,8 @@ body { background: var(--desktop-surface); }
 .window-controls button:hover { background: #4b5965; }
 .window-controls button:last-child:hover { background: #983f39; }
 .window-content { background: var(--desktop-surface); }
+:where(.window-content) { color: var(--desktop-text); }
+:where(.window-content) :where(a:any-link) { color: #a9d3ff; }
 .menu-pane, .status-popup, .task-popup,
 .codi-file-picker, .codi-confirm-dialog {
   color: var(--desktop-text);

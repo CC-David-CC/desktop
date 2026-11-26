@@ -442,6 +442,7 @@ function displayedWindowTitle(w){
 function initialWindows(){return [];}
 const windowRect=w=>({x:w.x,y:w.y,w:w.w,h:w.h});
 const compactDesktop=width=>width<=720||(matchMedia('(pointer:coarse)').matches&&width<1024);
+const phoneDesktop=width=>width<600||(width<1024&&matchMedia('(pointer:coarse)').matches&&Math.min(screen.width,screen.height)<600);
 const wideEngineeringApps=new Set(['microduck','electronics-design','circuitjs','jsketcher','digital-logic','arduino-simulator','pico-simulator','replicad','kiri-moto','mesh-tool','gcode-preview']);
 function windowHasChanges(w){return !!(w.microduck?.dirty||w.calculator?.saving||w.editor?.dirty||w.imageEditor?.dirty||w.documentEditor?.dirty||w.dataExplorer?.dirty||w.spreadsheet?.dirty||(w.audioEditor?.dirty||w.audioEditor?.hasChanges?.())||w.fallingBlocks?.dirty||w.owlCompanion?.dirty||w.physicsPlayground?.dirty||w.snakeGarden?.dirty||w.clockworkRoom?.dirty||w.chessStudy?.dirty||w.solitaire?.dirty||w.skyCourier?.dirty||w.marbleWorks?.dirty||w.stackBalance?.dirty||w.crystalDefense?.dirty||w.droneCircuit?.dirty||w.reactiveControlDesk?.dirty||w.storyCards?.dirty||w.expressionPuppet?.dirty||w.rhythmGarden?.dirty||w.lanternLeap?.dirty||w.gardenDefense?.dirty||w.pocketRally?.dirty||w.slingTargets?.dirty||w.gravityPinball?.dirty||w.kineticRelay?.dirty||w.tabletopBotArena?.dirty||w.pocketGolf?.dirty||w.targetGarden?.dirty||w.orbitalCourier?.dirty||w.clockworkQuest?.dirty||w.memoryGarden?.dirty||w.replicad?.dirty||w.gridTools?.dirty||w.logic?.dirty||w.jsketcher?.hasChanges?.()||w.circuitjs?.hasChanges?.()||w.electronicsDesign?.dirty||w.arduinoSketch?.dirty||w.arduinoSimulator?.saving||w.picoSimulator?.hasChanges?.()||w.stitchConverter?.dirty||w.embroideryStudio?.dirty||w.excalidraw?.dirty||w.svgEditor?.dirty||w.diagramsNet?.dirty||w.notebook?.dirty||w.browserDownloadState?.dirty);}
 
@@ -467,7 +468,7 @@ class Desktop {
   dispose(){this.observer.disconnect();}
   layoutKey(owner){return JSON.stringify(['codi-window-layout/1',identityConfig?.identity?.issuer||location.origin,owner]);}
   saveLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner!==owner)return true;try{const windows=this.windows.filter(w=>accountWindow(w)&&!w.previewBytes&&!isAccountApp(w.app)&&w.launchContext?.storage!=='guest').slice(0,64).map(w=>{const saved=w.documentEditor||w.spreadsheet||w.editor||w.imageEditor||w.audioEditor||w.excalidraw||w.svgEditor||w.diagramsNet||w.replicad||w.logic||w.jsketcher||w.circuitjs||w.electronicsDesign||w.arduinoSimulator||w.picoSimulator||w.stitchConverter||w.embroideryStudio||w.notebook;const path=saved?.version&&typeof saved.path==='string'?saved.path:w.launchContext?.path,rect=w.desktopRect||windowRect(w),restore=w.desktopRect?w.desktopRestore:w.restore;return {id:w.id,app:w.app,title:w.title,workspace:w.workspace,x:rect.x,y:rect.y,w:rect.w,h:rect.h,minimized:!!w.minimized,rolled:!!w.rolled,restore:restore||undefined,tileSide:w.tileSide||undefined,tileSlot:Number.isInteger(w.tileSlot)?w.tileSlot:undefined,path,storage:w.launchContext?.storage,sha256:w.launchContext?.sha256,textDraftId:w.app==='text'?w.textDraftId:undefined,wordcraftDraftId:w.app==='wordcraft'?w.wordcraftDraftId:undefined,pdfcraftDraftId:w.app==='pdfcraft'?w.pdfcraftDraftId:undefined,gridcraftDraftId:w.app==='gridcraft'?w.gridcraftDraftId:undefined,deckcraftDraftId:w.app==='deckcraft'?w.deckcraftDraftId:undefined,wordcraftRecoveryAsCopy:w.app==='wordcraft'&&w.wordcraftRecoveryAsCopy?true:undefined,pdfcraftRecoveryAsCopy:w.app==='pdfcraft'&&w.pdfcraftRecoveryAsCopy?true:undefined,gridcraftRecoveryAsCopy:w.app==='gridcraft'&&w.gridcraftRecoveryAsCopy?true:undefined,deckcraftRecoveryAsCopy:w.app==='deckcraft'&&w.deckcraftRecoveryAsCopy?true:undefined,...(layerAccountApps.includes(w.app)?{[w.app+'DraftId']:w[w.app+'DraftId'],[w.app+'RecoveryAsCopy']:w[w.app+'RecoveryAsCopy']===true||undefined}:{})};});localStorage.setItem(this.layoutKey(owner),JSON.stringify({version:1,current:this.current,active:this.active,windows}));return true;}catch(error){console.warn('Could not save window layout:',error.message);return false;}}
-  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set([...['mailcraft', 'account-management'].filter(enabledApp),...(enabledApp('metriccraft')?['metriccraft']:[]),...(enabledApp('projectcraft')?['projectcraft']:[]),...(enabledApp('riscv-rust')?['riscv-rust']:[]),...(enabledApp('esp32sim')?['esp32sim']:[]),...(enabledApp('softfpga')?['softfpga']:[]),...(enabledApp('circuit-lab')?['circuit-lab']:[]),...(enabledApp('opencadstudio')?['opencadstudio']:[]),...(enabledApp('picasso-suite')?['picasso-suite']:[]),...(enabledApp('align')?['align']:[]),...(enabledApp('earthcraft')?['earthcraft']:[]),...(enabledApp('textcraft')?['textcraft']:[]),...(enabledApp('suhina')?['suhina']:[]),...(enabledApp('retake')?['retake']:[]),...(enabledApp('pro-wave')?['pro-wave']:[]),...(enabledApp('oxiguitar')?['oxiguitar']:[]),...(enabledApp('mixstudio')?['mixstudio']:[]),...(enabledApp('lemon-studio')?['lemon-studio']:[]),...(enabledApp('honeydew')?['honeydew']:[]),...(enabledApp('procraft')?['procraft']:[]),...(enabledApp('pixelcraft')?['pixelcraft']:[]),...(enabledApp('chromaforge')?['chromaforge']:[]),...(enabledApp('firecraft')?['firecraft']:[]),...(enabledApp('oxybrush')?['oxybrush']:[]),...(enabledApp('humanmotioncraft')?['humanmotioncraft']:[]),...(enabledApp('hdl-workbench')?['hdl-workbench']:[]),...(enabledApp('tracedraw')?['tracedraw']:[]),...(enabledApp('scriobh')?['scriobh']:[]),...(enabledApp('mathcraft2')?['mathcraft2']:[]),...(enabledApp('subcraft')?['subcraft']:[]),...(enabledApp('transit')?['transit']:[]),...(enabledApp('paintcraft')?['paintcraft']:[]),...(enabledApp('paint-rs')?['paint-rs']:[]),...(enabledApp('cuepool')?['cuepool']:[]),...(enabledApp('matcraft')?['matcraft']:[]),...(enabledApp('clothcraft')?['clothcraft']:[]),...(enabledApp('notecraft')?['notecraft']:[]),...(enabledApp('i-success')?['i-success']:[]),...(enabledApp('narrator')?['narrator']:[]),...Object.keys(drakonApps).filter(enabledApp),...Object.keys(learningGames).filter(enabledApp),...(enabledApp('mathcraft')?['mathcraft']:[]),'weather','weather-maps','wordcraft','pdfcraft','gridcraft','deckcraft',...layerAccountApps.filter(enabledApp),'microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(v.storage==='account'&&typeof v.path==='string'&&!v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'account',path:v.path,sha256:v.sha256,owner,...(Object.hasOwn(accountDocumentNames,v.app)?{restore:true}:{})});win.ownerSub=owner;}else if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner,...(['notebook','replicad','embroidery-studio'].includes(v.app)&&/^[0-9a-f]{64}$/.test(v.sha256)?{sha256:v.sha256}:{})});win.ownerSub=owner;}if(v.app==='text'&&typeof v.textDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.textDraftId))win.textDraftId=v.textDraftId;if(v.app==='wordcraft'&&typeof v.wordcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.wordcraftDraftId))win.wordcraftDraftId=v.wordcraftDraftId;if(v.app==='pdfcraft'&&typeof v.pdfcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.pdfcraftDraftId))win.pdfcraftDraftId=v.pdfcraftDraftId;if(v.app==='gridcraft'&&typeof v.gridcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.gridcraftDraftId))win.gridcraftDraftId=v.gridcraftDraftId;if(v.app==='gridcraft'&&v.gridcraftRecoveryAsCopy===true)win.gridcraftRecoveryAsCopy=true;if(v.app==='deckcraft'&&typeof v.deckcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.deckcraftDraftId))win.deckcraftDraftId=v.deckcraftDraftId;if(v.app==='deckcraft'&&v.deckcraftRecoveryAsCopy===true)win.deckcraftRecoveryAsCopy=true;if(layerAccountApps.includes(v.app)){const draft=v.app+'DraftId',copy=v.app+'RecoveryAsCopy';if(typeof v[draft]==='string'&&/^[0-9a-f-]{36}$/.test(v[draft]))win[draft]=v[draft];if(v[copy]===true)win[copy]=true;}if(v.app==='wordcraft'&&v.wordcraftRecoveryAsCopy===true)win.wordcraftRecoveryAsCopy=true;if(v.app==='pdfcraft'&&v.pdfcraftRecoveryAsCopy===true)win.pdfcraftRecoveryAsCopy=true;
+  restoreLayout(){const owner=signedInSubject();if(!owner||this.layoutOwner===owner)return;this.layoutOwner=owner;this.windows=[];this.current=0;this.active=null;try{const raw=localStorage.getItem(this.layoutKey(owner));if(!raw||raw.length>65536)return;const data=JSON.parse(raw),allowed=new Set([...['mailcraft', 'account-management', 'ledger', 'gpu-text', 'image-studio'].filter(enabledApp),...(enabledApp('metriccraft')?['metriccraft']:[]),...(enabledApp('projectcraft')?['projectcraft']:[]),...(enabledApp('riscv-rust')?['riscv-rust']:[]),...(enabledApp('esp32sim')?['esp32sim']:[]),...(enabledApp('softfpga')?['softfpga']:[]),...(enabledApp('circuit-lab')?['circuit-lab']:[]),...(enabledApp('opencadstudio')?['opencadstudio']:[]),...(enabledApp('picasso-suite')?['picasso-suite']:[]),...(enabledApp('align')?['align']:[]),...(enabledApp('earthcraft')?['earthcraft']:[]),...(enabledApp('textcraft')?['textcraft']:[]),...(enabledApp('suhina')?['suhina']:[]),...(enabledApp('retake')?['retake']:[]),...(enabledApp('pro-wave')?['pro-wave']:[]),...(enabledApp('oxiguitar')?['oxiguitar']:[]),...(enabledApp('mixstudio')?['mixstudio']:[]),...(enabledApp('lemon-studio')?['lemon-studio']:[]),...(enabledApp('honeydew')?['honeydew']:[]),...(enabledApp('procraft')?['procraft']:[]),...(enabledApp('pixelcraft')?['pixelcraft']:[]),...(enabledApp('chromaforge')?['chromaforge']:[]),...(enabledApp('firecraft')?['firecraft']:[]),...(enabledApp('oxybrush')?['oxybrush']:[]),...(enabledApp('humanmotioncraft')?['humanmotioncraft']:[]),...(enabledApp('hdl-workbench')?['hdl-workbench']:[]),...(enabledApp('tracedraw')?['tracedraw']:[]),...(enabledApp('scriobh')?['scriobh']:[]),...(enabledApp('mathcraft2')?['mathcraft2']:[]),...(enabledApp('subcraft')?['subcraft']:[]),...(enabledApp('transit')?['transit']:[]),...(enabledApp('paintcraft')?['paintcraft']:[]),...(enabledApp('paint-rs')?['paint-rs']:[]),...(enabledApp('cuepool')?['cuepool']:[]),...(enabledApp('matcraft')?['matcraft']:[]),...(enabledApp('clothcraft')?['clothcraft']:[]),...(enabledApp('notecraft')?['notecraft']:[]),...(enabledApp('i-success')?['i-success']:[]),...(enabledApp('narrator')?['narrator']:[]),...Object.keys(drakonApps).filter(enabledApp),...Object.keys(learningGames).filter(enabledApp),...(enabledApp('mathcraft')?['mathcraft']:[]),'weather','weather-maps','wordcraft','pdfcraft','gridcraft','deckcraft',...layerAccountApps.filter(enabledApp),'microduck','terminal','files','browser','text','document-editor','spreadsheet','data-explorer','pdf-viewer','image-editor','calculator','help','audio-editor','gcode-preview','kiri-moto','mesh-tool','excalidraw','svg-editor','replicad','diagrams-net','notebook','arduino-simulator','pico-simulator','circuitjs','jsketcher','electronics-design','digital-logic','embroidery-studio','stitch-converter','falling-blocks','owl-companion','physics-playground','snake-garden','clockwork-room','chess-study','solitaire','sky-courier','marble-works','stack-balance','crystal-defense','drone-circuit','reactive-control-desk','story-cards','expression-puppet','rhythm-garden','lantern-leap','garden-defense','pocket-rally','sling-targets','gravity-pinball','kinetic-relay','tabletop-bot-arena','pocket-golf','target-garden','orbital-courier','clockwork-quest','memory-garden']);if(data?.version!==1||!Array.isArray(data.windows)||data.windows.length>64)return;const seen=new Set();for(const v of data.windows){if(!v||!allowed.has(v.app)||!Number.isSafeInteger(v.id)||v.id<1||seen.has(v.id)||![v.x,v.y,v.w,v.h,v.workspace].every(Number.isFinite))continue;seen.add(v.id);const win={id:v.id,app:v.app,title:typeof v.title==='string'?v.title.slice(0,256):v.app,workspace:Math.max(0,Math.min(2,Math.floor(v.workspace))),x:v.x,y:v.y,w:Math.max(300,Math.min(4000,v.w)),h:Math.max(150,Math.min(4000,v.h)),minimized:!!v.minimized,rolled:!!v.rolled};if(v.tileSide==='left'||v.tileSide==='right')win.tileSide=v.tileSide;if(Number.isInteger(v.tileSlot)&&v.tileSlot>=0&&v.tileSlot<4){win.tileSlot=v.tileSlot;delete win.tileSide;}if(v.restore&&[v.restore.x,v.restore.y,v.restore.w,v.restore.h].every(Number.isFinite)&&v.restore.w>0&&v.restore.h>0)win.restore={x:v.restore.x,y:v.restore.y,w:Math.min(4000,v.restore.w),h:Math.min(4000,v.restore.h)};if(v.storage==='account'&&typeof v.path==='string'&&!v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'account',path:v.path,sha256:v.sha256,owner,...(Object.hasOwn(accountDocumentNames,v.app)?{restore:true}:{})});win.ownerSub=owner;}else if(typeof v.path==='string'&&v.path.startsWith('/')&&v.path.length<=2048){win.launchContext=Object.freeze({version:1,storage:'mirror',path:v.path,owner,...(['notebook','replicad','embroidery-studio'].includes(v.app)&&/^[0-9a-f]{64}$/.test(v.sha256)?{sha256:v.sha256}:{})});win.ownerSub=owner;}if(v.app==='text'&&typeof v.textDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.textDraftId))win.textDraftId=v.textDraftId;if(v.app==='wordcraft'&&typeof v.wordcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.wordcraftDraftId))win.wordcraftDraftId=v.wordcraftDraftId;if(v.app==='pdfcraft'&&typeof v.pdfcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.pdfcraftDraftId))win.pdfcraftDraftId=v.pdfcraftDraftId;if(v.app==='gridcraft'&&typeof v.gridcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.gridcraftDraftId))win.gridcraftDraftId=v.gridcraftDraftId;if(v.app==='gridcraft'&&v.gridcraftRecoveryAsCopy===true)win.gridcraftRecoveryAsCopy=true;if(v.app==='deckcraft'&&typeof v.deckcraftDraftId==='string'&&/^[0-9a-f-]{36}$/.test(v.deckcraftDraftId))win.deckcraftDraftId=v.deckcraftDraftId;if(v.app==='deckcraft'&&v.deckcraftRecoveryAsCopy===true)win.deckcraftRecoveryAsCopy=true;if(layerAccountApps.includes(v.app)){const draft=v.app+'DraftId',copy=v.app+'RecoveryAsCopy';if(typeof v[draft]==='string'&&/^[0-9a-f-]{36}$/.test(v[draft]))win[draft]=v[draft];if(v[copy]===true)win[copy]=true;}if(v.app==='wordcraft'&&v.wordcraftRecoveryAsCopy===true)win.wordcraftRecoveryAsCopy=true;if(v.app==='pdfcraft'&&v.pdfcraftRecoveryAsCopy===true)win.pdfcraftRecoveryAsCopy=true;
       // Registered windows rebind to the current subject before their app mounts.
       // The persisted layout has no trusted session fields.
       if (['mailcraft','account-management','ledger','gpu-text','image-studio'].includes(win.app)) win.ownerSub = owner;
@@ -476,11 +477,11 @@ class Desktop {
     this.current=Math.max(0,Math.min(2,Math.floor(data.current)||0));this.active=seen.has(data.active)?data.active:null;this.nextId=Math.max(10,...seen)+1;}catch(error){console.warn('Could not restore window layout:',error.message);}}
   get pins(){return (panelPins?.pins(this.current)??this.initialPins??defaultPanelPins).filter(availableApplication);}
   panelWidth(){return this.mobile?52:72;}
-  workWidth(){return Math.max(1,this.viewport.clientWidth-this.panelWidth());}
+  workWidth(){return Math.max(1,this.viewport.clientWidth-(this.phoneApp?0:this.panelWidth()));}
   largeWorkspace(){return this.viewport.clientWidth>1920&&this.viewport.clientHeight>1080;}
   scale() {
     const width=this.viewport.clientWidth,height=this.viewport.clientHeight;
-    if(compactDesktop(width)!==this.mobile){this.render();return;}
+    if(compactDesktop(width)!==this.mobile||phoneDesktop(width)!==this.singleApp){this.render();return;}
     resolution=[width,height];this.scaleFactor=1;
     this.root.style.width=width+'px';this.root.style.height=height+'px';this.root.style.transform='none';
     this.spacer.style.width=width+'px';this.spacer.style.height=height+'px';
@@ -488,7 +489,7 @@ class Desktop {
       this.fitWindow(w);
       const el=this.root.querySelector('[data-window="'+w.id+'"]');
       if(!el)continue;
-      Object.assign(el.style,{left:w.x+'px',top:w.y+'px',width:w.w+'px',height:(w.rolled?this.config.titleHeight:w.h)+'px'});
+      Object.assign(el.style,{left:w.x+'px',top:w.y+'px',width:w.w+'px',height:(!this.singleApp&&w.rolled?this.config.titleHeight:w.h)+'px'});
       const maximize=el.querySelector('.window-maximize');
       const maximizeLabel=w.restore?'Restore':'Maximize';
       if(maximize.title!==maximizeLabel){
@@ -501,6 +502,7 @@ class Desktop {
   }
   updateLayout(){
     const mobile=compactDesktop(this.viewport.clientWidth);
+    this.singleApp=phoneDesktop(this.viewport.clientWidth);
     if(mobile!==this.mobile){
       for(const w of this.windows){
         if(mobile){w.desktopRect=windowRect(w);w.desktopRestore=w.restore;delete w.restore;}
@@ -510,10 +512,15 @@ class Desktop {
     }
     this.config={...this.baseConfig,...(mobile?{panelHeight:48,iconSize:24,panelFontSize:16,menuRowHeight:44,menuFontSize:16,titleHeight:48,controlWidth:44,titleFontSize:14,titleIconSize:24,controlGlyphSize:20}:{})};
     this.root.classList.toggle('compact-desktop',mobile);
+    this.root.classList.toggle('single-app-phone',this.singleApp);
   }
   fitWindow(w){
     const width=this.workWidth(),height=this.viewport.clientHeight,top=0;
-    if(this.mobile){
+    if(this.singleApp){
+      if(!w.desktopRect){w.desktopRect=windowRect(w);w.desktopRestore=w.restore;}
+      Object.assign(w,{x:0,y:0,w:this.viewport.clientWidth,h:Math.max(1,height)});
+    }
+    else if(this.mobile){
       if(!w.mobileRect){if(!w.desktopRect){w.desktopRect=windowRect(w);w.desktopRestore=w.restore;}const stagger=(this.windows.filter(n=>n.workspace===w.workspace).indexOf(w)%4)*24;w.mobileRect={x:8,y:top+8+stagger,w:Math.max(1,width-16),h:Math.min(w.h,Math.max(150,height-top-24-stagger))};if(!w.restore)w.restore={...w.mobileRect};}
       const rect=w.restore?{x:0,y:top,w:width,h:height-top}:w.mobileRect;
       Object.assign(w,rect);w.w=Math.min(w.w,width);w.h=Math.min(w.h,Math.max(this.config.titleHeight,height-top));
@@ -532,7 +539,15 @@ class Desktop {
   popupBackdrop(){if(this.mobile&&!this.root.querySelector('.popup-backdrop'))this.root.append(button('Close menu',()=>this.closePopups(),'popup-backdrop'));}
   render() {
     const wasMobile=this.mobile;this.updateLayout();const c=this.config;
-    const keepMenu=!!this.menu&&wasMobile===this.mobile&&!!this.root.querySelector('.menu-pane');
+    this.current=Math.min(this.current,c.workspaceCount-1);
+    this.windows.forEach(w=>{w.workspace=Math.min(w.workspace,c.workspaceCount-1);});
+    const visible=this.windows.filter(w=>w.workspace===this.current&&!w.minimized&&accountWindow(w));
+    if(this.singleApp&&!visible.some(w=>w.id===this.active))this.active=null;
+    else if(!this.singleApp&&(this.windows.some(w=>w.id===this.active&&!accountWindow(w))||
+      (this.mobile&&!visible.some(w=>w.id===this.active))))this.active=visible.at(-1)?.id??null;
+    this.phoneApp=this.singleApp&&this.active!==null;
+    const keepMenu=!this.phoneApp&&!!this.menu&&wasMobile===this.mobile&&!!this.root.querySelector('.menu-pane');
+    if(this.phoneApp&&this.menu)this.closePopups();
     const fileGateway=typeof serverFilesAvailable==='function'&&serverFilesAvailable();
     // Keep app DOM, drafts and cursor positions while rebuilding desktop chrome.
     for(const child of [...this.root.children])if(!child.matches('.window')&&!(keepMenu&&child.matches('.menu-pane,.popup-backdrop')))child.remove();
@@ -544,21 +559,16 @@ class Desktop {
       'title-height':c.titleHeight,'control-width':c.controlWidth,'title-font':c.titleFontSize,
       'title-icon-size':c.titleIconSize,'control-glyph-size':c.controlGlyphSize};
     for(const [key,value] of Object.entries(vars))this.root.style.setProperty('--'+key,value+'px');
-    this.current=Math.min(this.current,c.workspaceCount-1);
-    this.windows.forEach(w=>{w.workspace=Math.min(w.workspace,c.workspaceCount-1);});
     this.appIdentity=signedInSubject();
-    const visible=this.windows.filter(w=>w.workspace===this.current&&!w.minimized&&accountWindow(w));
-    if(this.windows.some(w=>w.id===this.active&&!accountWindow(w)))this.active=visible.at(-1)?.id??null;
-    if(this.mobile&&!visible.some(w=>w.id===this.active))this.active=visible.at(-1)?.id??null;
-    this.renderPanel();
+    if(!this.phoneApp)this.renderPanel();
     for(const w of this.windows){
       if(!accountWindow(w))continue;
       let win=this.root.querySelector('[data-window="'+w.id+'"]');
       const changed=win&&(win.editorState!==w.editor||(w.app==='files'&&(win.fileGateway!==fileGateway||win.fileOwner!==signedInSubject())));
       if(changed){disposePublicAppView(win,'View replaced');win.remove();win=null;}
       if(!win){this.renderWindow(w);win=this.root.querySelector('[data-window="'+w.id+'"]');win.editorState=w.editor;win.fileGateway=fileGateway;win.fileStorage=w.storage||'guest';win.fileOwner=signedInSubject();}
-      win.hidden=w.workspace!==this.current||!!w.minimized;
-      win.classList.toggle('focused',this.active===w.id);win.classList.toggle('rolled',!!w.rolled);
+      win.hidden=w.workspace!==this.current||!!w.minimized||(this.singleApp&&this.active!==w.id);
+      win.classList.toggle('focused',this.active===w.id);win.classList.toggle('rolled',!this.singleApp&&!!w.rolled);
       win.querySelector('.caption-text').textContent=displayedWindowTitle(w);win.setAttribute('aria-label',displayedWindowTitle(w));
       const roll=win.querySelector('.window-controls button');roll.setAttribute('aria-label',w.rolled?'Unroll':'Roll up');roll.title=w.rolled?'Unroll':'Roll up';
       roll.querySelector('path').setAttribute('d',w.rolled?'M5 9 L12 16 L19 9':'M5 16 L12 9 L19 16');
@@ -947,6 +957,7 @@ class Desktop {
       this.windows=this.windows.filter(n=>n.id!==w.id);
       if(this.active===w.id)this.active=null;
       this.render();
+      if(this.singleApp)this.root.querySelector('.app-menu-button')?.focus({preventScroll:true});
     };
     if(!dirty()){close();return;}
     if(w.closeDialog?.isConnected)return;
@@ -973,17 +984,17 @@ class Desktop {
       ['Close','M5 5 L19 19 M19 5 L5 19',()=>{this.requestWindowClose(w);return false;}]
     ];
     actions.forEach(([name,path,action,controlClass])=>{
-      const b=button(name,()=>{if(action()===false)return;if(this.mobile)w.mobileRect=windowRect(w);this.closePopups();this.render();},controlClass);b.title=name;
+      const b=button(name,()=>{if(action()===false)return;if(this.mobile&&!this.singleApp)w.mobileRect=windowRect(w);this.closePopups();this.render();if(this.singleApp&&w.minimized)this.root.querySelector('.app-menu-button')?.focus({preventScroll:true});},controlClass);b.title=name;
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');
       const p=document.createElementNS('http://www.w3.org/2000/svg','path');p.setAttribute('d',path);svg.append(p);b.append(svg);controls.append(b);
     });
-    caption.append(controls);caption.addEventListener('dblclick',e=>{if(!e.target.closest('button')){actions[2][2]();this.render();}});
+    caption.append(controls);caption.addEventListener('dblclick',e=>{if(!this.singleApp&&!e.target.closest('button')){actions[2][2]();this.render();}});
     this.drag(caption,w,win,false);win.append(caption,this.windowContent(w));applyScreenKeyboardPolicy(win);
     const resize=make('div','resize-handle');resize.setAttribute('aria-label','Resize window');this.drag(resize,w,win,true);win.append(resize);this.root.append(win);
   }
   drag(handle,w,win,resize) {
     handle.addEventListener('pointerdown',e=>{
-      if(e.target.closest('button')||e.button!==0)return;if(e.pointerType==='mouse')e.preventDefault();this.closePopups();
+      if(this.singleApp||e.target.closest('button')||e.button!==0)return;if(e.pointerType==='mouse')e.preventDefault();this.closePopups();
       const start={x:e.clientX,y:e.clientY,wx:w.x,wy:w.y,ww:w.w,wh:w.h};handle.setPointerCapture(e.pointerId);
       const move=event=>{
         const dx=(event.clientX-start.x)/this.scaleFactor,dy=(event.clientY-start.y)/this.scaleFactor;
