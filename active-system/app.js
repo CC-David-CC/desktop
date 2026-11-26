@@ -3,6 +3,30 @@ window.CODI_PRIVATE_FILES_UI=1;
 const reference = window.CODI_REFERENCE;
 const $ = (s, root = document) => root.querySelector(s);
 const make = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+function installBrowserZoomGuard(root) {
+  const observed = new WeakSet();
+  const cancelZoom = event => {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing) return;
+    if (['+', '=', '-', 'Add', 'Subtract'].includes(event.key) || ['NumpadAdd', 'NumpadSubtract'].includes(event.code)) {
+      event.preventDefault();
+    }
+  };
+  function observeFrame(frame) {
+    observeDocument(frame.contentDocument);
+  }
+  function observeDocument(doc) {
+    if (!doc || observed.has(doc)) return;
+    observed.add(doc);
+    // Cancel the browser action while continuing to deliver the key to the app.
+    doc.addEventListener('keydown', cancelZoom, true);
+    doc.addEventListener('load', event => {
+      if (event.target.localName === 'iframe') observeFrame(event.target);
+    }, true);
+    for (const frame of doc.querySelectorAll('iframe')) observeFrame(frame);
+  }
+  observeDocument(root);
+}
+installBrowserZoomGuard(document);
 const shipped = {
   panelHeight: reference.panelHeight, iconSize: reference.iconSize, panelFontSize: 13.3333,
   workspaceWidth: reference.workspaceWidth, workspaceCount: reference.workspaceCount,
