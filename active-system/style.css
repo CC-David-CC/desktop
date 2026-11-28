@@ -303,3 +303,9 @@ body { background: var(--desktop-surface); }
   background: var(--desktop-raised);
   border-color: var(--desktop-border);
 }
+
+.phone-editor .window.focused { border: 0; border-radius: 0; }
+.phone-editor .window.focused .window-controls button:first-child,
+.phone-editor .window.focused .window-maximize,
+.phone-editor .window.focused .resize-handle { display: none; }
+.phone-editor .window.focused .window-caption { cursor: default; }
